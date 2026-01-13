@@ -78,7 +78,7 @@
       position:fixed; inset:0;
       background:rgba(0,0,0,.45);
       display:none;
-      align-items:center;
+      align-items:flex-start;
       justify-content:center;
       padding:14px;
       z-index: 1000;
@@ -89,7 +89,10 @@
       border-radius:14px;
       box-shadow: 0 20px 60px rgba(0,0,0,.25);
       overflow:hidden;
-    }
+    
+  max-height:90vh;
+  display:flex;
+  flex-direction:column;}
     .modal-hd{
       padding:16px 18px;
       border-bottom:1px solid #eef2f7;
@@ -99,7 +102,9 @@
       justify-content:space-between;
       gap:12px;
     }
-    .modal-bd{ padding:16px 18px; }
+    .modal-bd{ padding:16px 18px; 
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;}
     .modal-ft{
       padding:14px 18px;
       border-top:1px solid #eef2f7;
@@ -753,6 +758,8 @@ function updateAreaSummary(){
 }
 
 function openAreaModal(){
+  document.body.style.overflow = "hidden";
+
   const bd = $("#areaModalBackdrop");
   bd.style.display = "flex";
   bd.setAttribute("aria-hidden","false");
@@ -764,6 +771,8 @@ function openAreaModal(){
   setTimeout(() => $("#A_m2")?.focus(), 50);
 }
 function closeAreaModal(){
+  document.body.style.overflow = "";
+
   const bd = $("#areaModalBackdrop");
   bd.style.display = "none";
   bd.setAttribute("aria-hidden","true");
