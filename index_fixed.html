@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <title>租金檢核系統</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#fff;
+      --shadow:0 6px 16px rgba(0,0,0,.08);
+      --primary:#2563eb;
+      --muted:#6b7280;
+      --border:#d1d5db;
+      --ok-bg:#dcfce7;
+      --ok-tx:#166534;
+      --bad-bg:#fee2e2;
+      --bad-tx:#991b1b;
+    }
+    body{font-family:"Noto Sans TC",system-ui;background:var(--bg);margin:0;color:#111827}
+    .wrap{max-width:1100px;margin:30px auto;padding:20px}
+    h1{margin:0 0 8px}
+    .hint{color:var(--muted);font-size:13px;margin:0 0 18px;line-height:1.6}
+    .card{background:var(--card);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}}
+    label{font-weight:700;font-size:14px;display:block;margin-bottom:6px}
+    input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);font-size:14px}
+    input:focus,select:focus{outline:none;border-color:#93c5fd;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+    .radio,.check{display:flex;gap:12px;flex-wrap:wrap}
+    .radio label,.check label{display:flex;gap:6px;align-items:center;font-weight:600}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .btn{padding:12px 16px;border-radius:10px;border:none;font-weight:800;cursor:pointer}
+    .btn.primary{background:var(--primary);color:#fff}
+    .btn.primary:disabled{background:#94a3b8;cursor:not-allowed}
+    .btn.ghost{background:#eef2ff;color:#1f2a6b}
+    .btn.danger{background:#fee2e2;color:#991b1b}
+    .result{margin-top:14px;padding:14px;border-radius:12px;font-weight:800;white-space:pre-line}
+    .pass{background:var(--ok-bg);color:var(--ok-tx)}
+    .fail{background:var(--bad-bg);color:var(--bad-tx)}
+    .req{color:#dc2626}
+    .small{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+    .divider{height:1px;background:#eef2f7;margin:14px 0}
+    .kbd{
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;padding:2px 6px;font-size:12px
+    }
+
+    input, select { font-size: 16px; }
+    @media (max-width: 600px){
+      .wrap{ margin: 14px auto; padding: 12px; }
+      .card{ padding: 14px; border-radius: 14px; }
+      h1{ font-size: 20px; }
+      .hint{ font-size: 12px; }
+      .grid{ gap: 12px; }
+      .radio label, .check label{
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #fff;
+      }
+      .radio input, .check input{ width: 18px; height: 18px; }
+      #rentCheckBtn{
+        position: sticky;
+        bottom: 10px;
+        width: 100%;
+        padding: 14px 16px;
+        border-radius: 14px;
+        box-shadow: 0 10px 24px rgba(0,0,0,.14);
+        z-index: 10;
+      }
+    }
+    @media (min-width: 601px){
+      input, select { font-size: 14px; }
+    }
+
+    .modal-backdrop{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.45);
+      display:none;
+      align-items:flex-start;
+      justify-content:center;
+      padding:14px;
+      z-index: 1000;
+    }
+    .modal{
+      width:min(980px, 100%);
+      background:#fff;
+      border-radius:14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      overflow:hidden;
+    
+  max-height:90vh;
+  display:flex;
+  flex-direction:column;}
+    .modal-hd{
+      padding:16px 18px;
+      border-bottom:1px solid #eef2f7;
+      font-weight:900;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .modal-bd{ padding:16px 18px; 
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;}
+    .modal-ft{
+      padding:14px 18px;
+      border-top:1px solid #eef2f7;
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+      background:#fff;
+    }
+    .banner-warn{
+      background:#fde8e8;
+      border:1px solid #fecaca;
+      color:#b91c1c;
+      padding:12px 14px;
+      border-radius:12px;
+      font-weight:800;
+      margin-bottom:12px;
+      line-height:1.5;
+    }
+    .table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+    }
+    .table th, .table td{
+      border:1px solid #eef2f7;
+      padding:10px;
+      vertical-align:middle;
+    }
+    .table th{
+      background:#f9fafb;
+      font-weight:900;
+      text-align:center;
+    }
+    .pill{
+      display:inline-block;
+      padding:4px 8px;
+      border-radius:999px;
+      background:#ecfeff;
+      border:1px solid #cffafe;
+      color:#155e75;
+      font-weight:800;
+      font-size:12px;
+    }
+    .sumline{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      padding:12px 10px;
+      background:#f9fafb;
+      border:1px solid #eef2f7;
+      border-top:none;
+      font-weight:900;
+    }
+    .sumline b{ font-size:16px; }
+    .muted{ color:var(--muted); font-weight:700; font-size:12px; }
+    .chipbtn{ padding:10px 12px; border-radius:12px; border:none; font-weight:900; cursor:pointer;}
+    .chipbtn.add{ background:#22c55e; color:#fff; }
+    .chipbtn.del{ background:#fee2e2; color:#991b1b; }
+    .nowrap{ white-space:nowrap; }
+    .mini{
+      padding:10px;
+      border-radius:10px;
+      border:1px solid var(--border);
+    }
+    .mini.xs{ width:70px; text-align:center; }
+    @media (max-width: 700px){
+      .table{ font-size:13px; }
+      .modal-bd{ padding:12px; }
+      .modal-hd{ padding:12px; }
+      .modal-ft{ padding:12px; }
+      .sumline{ flex-direction:column; align-items:flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>租金檢核系統</h1>
+  <p class="hint">
+    依公式：<span class="kbd">Rmax = Pref × (1 + δL + δD) × Aarea + ΔE</span><br>
+    比對：<b>只用純租金</b>（房東預期租金）與 <b>Rmax</b> 比對；管理費/車位費僅作紀錄不納入比對。<br>
+    Pref 取值：<b>套房</b>→表九（獨立套房單價表），<b>非套房</b>→表八（整層/戶單價表）。<br>
+    設備加成 ΔE：冷氣+冰箱+洗衣機「三樣齊全」才加；套房 +1,000、整層/戶 +2,000。設備不影響是否可檢核。
+  </p>
+
+  <div class="card">
+    <h3 style="margin:0 0 12px;">基本資料（<span class="req">*</span>必填）</h3>
+
+    <div class="grid">
+      <div>
+        <label>地址 <span class="req">*</span></label>
+
+        <input id="cityFixed" value="桃園市" disabled
+               style="margin-bottom:8px; background:#f3f4f6; opacity:1;">
+
+        <select id="district" style="margin-bottom:8px;">
+          <option value="">請選擇行政區</option>
+          <option>龜山區</option><option>桃園區</option><option>中壢區</option>
+          <option>蘆竹區</option><option>八德區</option><option>大園區</option>
+          <option>平鎮區</option><option>觀音區</option><option>楊梅區</option>
+          <option>新屋區</option><option>龍潭區</option><option>大溪區</option>
+          <option>復興區</option>
+        </select>
+
+        <input id="roadAddr"
+               autocomplete="street-address"
+               inputmode="text"
+               placeholder="路名 / 段 / 巷 / 弄 / 號 / 樓（例：員林路二段282巷12號十四樓）">
+
+        <div class="small">系統會自動組合為「桃園市 + 行政區 + 路名門牌號」。</div>
+      </div>
+
+      <div>
+        <label>權狀坪數 Aarea <span class="req">*</span></label>
+        <div class="row" style="align-items:stretch;">
+          <input id="areaDeed" type="number" step="0.01" inputmode="decimal" placeholder="請按右側設定" readonly style="background:#f9fafb; opacity:1;">
+          <button id="openAreaModalBtn" class="btn ghost" type="button">設定</button>
+        </div>
+        <div class="small">點「設定」以 (A)+(B)+(C)-(D) 計算權狀坪數（坪）。</div>
+      </div>
+
+      <div style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 12px;">屋況條件（<span class="req">*</span>必填）</h3>
+
+    <div class="grid">
+      <div>
+        <label>建築完成年月 <span class="req">*</span></label>
+        <div class="row">
+          <input id="buildYear" inputmode="numeric" placeholder="民國年（例：113）">
+          <input id="buildMonth" inputmode="numeric" placeholder="月（1~12）">
+        </div>
+        <div class="small">屋齡級距依建築完成年月自動推算（0-5、5-10…40+）。</div>
+      </div>
+
+      <div>
+        <label>格局 <span class="req">*</span></label>
+        <div class="radio">
+          <label><input type="radio" name="layout" value="套房"> 套房</label>
+          <label><input type="radio" name="layout" value="2房"> 2房</label>
+          <label><input type="radio" name="layout" value="3房以上"> 3房以上</label>
+        </div>
+        <div class="small">選「套房」會改用獨立套房單價表（表九）計算 Pref。</div>
+      </div>
+
+      <div>
+        <label>房屋類型 <span class="req">*</span></label>
+        <div class="radio">
+          <label><input type="radio" name="houseType" value="公寓"> 公寓</label>
+          <label><input type="radio" name="houseType" value="電梯大廈"> 電梯大廈</label>
+          <label><input type="radio" name="houseType" value="華廈"> 華廈</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="grid">
+      <div>
+        <label>管理費（不納入比對）</label>
+        <input id="mgmtFeeAmt" type="number" value="0" min="0" inputmode="numeric">
+      </div>
+      <div>
+        <label>車位費（不納入比對）</label>
+        <input id="parkingAmt" type="number" value="0" min="0" inputmode="numeric">
+      </div>
+      <div>
+        <label>房東預期租金（純租金）<span class="req">*</span></label>
+        <input id="expectedRent" type="number" min="0" inputmode="numeric" placeholder="例：18000">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 12px;">調整因子（<span class="req">*</span>必填）</h3>
+
+    <div class="grid">
+      <div>
+        <label>物件區位 δL <span class="req">*</span></label>
+        <div class="radio">
+          <label><input type="radio" name="locLevel" value="中下區位"> 中下區位（0%）</label>
+          <label><input type="radio" name="locLevel" value="中上區位"> 中上區位（3%）</label>
+          <label><input type="radio" name="locLevel" value="優質區位"> 優質區位（5%）</label>
+        </div>
+      </div>
+
+      <div>
+        <label>裝修程度 δD <span class="req">*</span></label>
+        <div class="radio">
+          <label><input type="radio" name="renoLevel" value="無裝修"> 無裝修（0%）</label>
+          <label><input type="radio" name="renoLevel" value="簡易裝修"> 簡易裝修（3%）</label>
+          <label><input type="radio" name="renoLevel" value="中等裝修"> 中等裝修（5%）</label>
+        </div>
+      </div>
+
+      <div>
+        <label>設備（可不選；只影響 ΔE）</label>
+        <div class="check" id="equipGroup">
+          <label><input type="checkbox" name="equip" value="冷氣"> 冷氣</label>
+          <label><input type="checkbox" name="equip" value="冰箱"> 冰箱</label>
+          <label><input type="checkbox" name="equip" value="洗衣機"> 洗衣機</label>
+          <label><input type="checkbox" name="equip" value="無"> 無</label>
+        </div>
+        <div class="small">
+          ΔE 加成規則：冷氣+冰箱+洗衣機「三樣齊全」才加；套房 +1,000、整層/戶 +2,000。勾「無」表示無設備加成。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button id="rentCheckBtn" class="btn primary" disabled>租金檢核</button>
+  <div id="result"></div>
+</div>
+
+<!-- ===== 權狀坪數設定 Modal ===== -->
+<div id="areaModalBackdrop" class="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="areaModalTitle">
+    <div class="modal-hd">
+      <div id="areaModalTitle">設定權狀坪數</div>
+      <button id="closeAreaModalX" class="btn danger" type="button" style="padding:10px 12px;">關閉</button>
+    </div>
+
+    <div class="modal-bd">
+      <div class="banner-warn">
+        本物件尚未設定權狀坪數詳細資訊。<br>
+        按下確定後，請記得再次檢查【租金評定表】及【估價師簽核】是否正確。
+      </div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>類別</th>
+            <th>面積(m²)</th>
+            <th>共有權利範圍</th>
+            <th>共有權利面積(m²)</th>
+            <th>功能</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- A -->
+          <tr>
+            <td class="nowrap"><b>層次面積(A)</b></td>
+            <td><input id="A_m2" class="mini" type="number" step="0.01" inputmode="decimal" placeholder="輸入 m²"></td>
+            <td style="text-align:center;"><span class="pill">1</span></td>
+            <td style="text-align:center;"><span id="A_share_m2" class="pill">0.00</span></td>
+            <td style="text-align:center;"><span class="muted">固定</span></td>
+          </tr>
+
+          <!-- D -->
+          <tr style="background:#ecfdf5;">
+            <td>
+              <select id="D_type" class="mini" style="max-width:260px;">
+                <option value="無車位(D)">無車位(D)</option>
+                <option value="坡道平面(國宅)(D)">坡道平面(國宅)(D)</option>
+                <option value="坡道機械(D)">坡道機械(D)</option>
+                <option value="機械平面(D)">機械平面(D)</option>
+                <option value="機械機械(D)">機械機械(D)</option>
+                <option value="自訂車位(D)">自訂車位(D)</option>
+              </select>
+            </td>
+            <td><input id="D_m2" class="mini" type="number" step="0.01" inputmode="decimal" value="0"></td>
+
+            <!-- ✅ 共有權利範圍：無車位=—；其他車位=1；自訂=分子/分母 -->
+            <td style="text-align:center;">
+              <span id="D_rangeDash" class="muted">—</span>
+              <span id="D_rangeOne" class="pill" style="display:none;">1</span>
+
+              <div id="D_rangeInputs" style="display:none; justify-content:center; gap:8px; flex-wrap:wrap;">
+                <input id="D_num" class="mini xs" type="number" inputmode="numeric" placeholder="分子">
+                <div style="font-weight:900;">/</div>
+                <input id="D_den" class="mini xs" type="number" inputmode="numeric" placeholder="分母">
+              </div>
+              <div id="D_rangeHint" class="muted" style="display:none;margin-top:6px;">未填分子/分母視為 1/1</div>
+            </td>
+
+            <td style="text-align:center;"><span id="D_share_m2" class="pill">0.00</span></td>
+            <td style="text-align:center;">
+                <button id="addDBtn" class="chipbtn add" type="button">新增</button>
+              </td>
+          </tr>
+
+          <!-- 新增 B/C -->
+          <tr style="background:#ecfdf5;">
+            <td>
+              <select id="BC_kind" class="mini" style="max-width:240px;">
+                <option value="">請點選新增類別</option>
+                <option value="B">附屬部分(B)</option>
+                <option value="C">共有部分(C)</option>
+              </select>
+            </td>
+            <td><input id="BC_m2" class="mini" type="number" step="0.01" inputmode="decimal" placeholder="面積 m²"></td>
+            <td style="text-align:center;">
+              <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
+                <input id="BC_num" class="mini xs" type="number" inputmode="numeric" placeholder="分子">
+                <div style="font-weight:900;">/</div>
+                <input id="BC_den" class="mini xs" type="number" inputmode="numeric" placeholder="分母">
+              </div>
+              <div class="muted" style="margin-top:6px;">未填分子/分母視為 1/1</div>
+            </td>
+            <td style="text-align:center;"><span id="BC_share_m2_preview" class="pill">0.00</span></td>
+            <td style="text-align:center;"><button id="addBCBtn" class="chipbtn add" type="button">新增</button></td>
+          </tr>
+
+          <tr>
+            <td colspan="5" style="padding:0;">
+              <div id="dListWrap"></div>
+              <div id="bcListWrap"></div>
+              <div class="sumline">
+                <div><span class="muted">權狀坪數 = (A) + (B) + (C) - (D)</span></div>
+                <div>
+                  <b id="sumPing">0.00</b> 坪
+                  <span class="muted">（= <span id="sumM2">0.00</span> m²）</span>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+
+      <div class="small" style="margin-top:10px;">
+        B/C 的「共有權利面積(m²)」計算：<span class="kbd">面積(m²) × 分子/分母</span>。<br>
+        車位(D) 若選「自訂車位(D)」，其共有權利面積同樣依 <span class="kbd">面積(m²) × 分子/分母</span> 計算；其餘車位類型則直接採用面積(m²)（共有權利範圍默認 1）。
+      </div>
+    </div>
+
+    <div class="modal-ft">
+      <button id="cancelAreaModalBtn" class="btn" type="button">關閉</button>
+      <button id="confirmAreaModalBtn" class="btn primary" type="button">確定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const RENT_TABLE_HOUSE = {
+  "龜山區": {"0-5":855,"5-10":840,"10-15":825,"15-20":805,"20-25":785,"25-30":760,"30-35":740,"35-40":710,"40+":675},
+  "桃園區": {"0-5":780,"5-10":770,"10-15":755,"15-20":735,"20-25":720,"25-30":700,"30-35":680,"35-40":650,"40+":620},
+  "中壢區": {"0-5":770,"5-10":760,"10-15":745,"15-20":725,"20-25":705,"25-30":685,"30-35":670,"35-40":640,"40+":610},
+  "蘆竹區": {"0-5":745,"5-10":735,"10-15":720,"15-20":705,"20-25":685,"25-30":665,"30-35":645,"35-40":620,"40+":590},
+  "八德區": {"0-5":735,"5-10":720,"10-15":710,"15-20":690,"20-25":675,"25-30":655,"30-35":635,"35-40":610,"40+":580},
+  "大園區": {"0-5":735,"5-10":720,"10-15":710,"15-20":690,"20-25":675,"25-30":655,"30-35":635,"35-40":610,"40+":580},
+  "平鎮區": {"0-5":720,"5-10":710,"10-15":700,"15-20":680,"20-25":660,"25-30":645,"30-35":625,"35-40":600,"40+":570},
+  "觀音區": {"0-5":700,"5-10":685,"10-15":675,"15-20":660,"20-25":640,"25-30":625,"30-35":605,"35-40":580,"40+":555},
+  "楊梅區": {"0-5":615,"5-10":605,"10-15":595,"15-20":580,"20-25":565,"25-30":550,"30-35":535,"35-40":510,"40+":485},
+  "新屋區": {"0-5":580,"5-10":570,"10-15":560,"15-20":545,"20-25":530,"25-30":515,"30-35":500,"35-40":480,"40+":460},
+  "龍潭區": {"0-5":580,"5-10":570,"10-15":560,"15-20":545,"20-25":530,"25-30":515,"30-35":500,"35-40":480,"40+":460},
+  "大溪區": {"0-5":565,"5-10":555,"10-15":550,"15-20":535,"20-25":520,"25-30":505,"30-35":490,"35-40":470,"40+":450},
+  "復興區": {"0-5":375,"5-10":370,"10-15":360,"15-20":355,"20-25":345,"25-30":335,"30-35":325,"35-40":310,"40+":295}
+};
+
+const RENT_TABLE_SUITE = {
+  "龜山區": {"0-5":1225,"5-10":1205,"10-15":1185,"15-20":1155,"20-25":1125,"25-30":1095,"30-35":1065,"35-40":1020,"40+":970},
+  "蘆竹區": {"0-5":1180,"5-10":1160,"10-15":1140,"15-20":1110,"20-25":1080,"25-30":1050,"30-35":1020,"35-40":980,"40+":935},
+  "桃園區": {"0-5":1120,"5-10":1100,"10-15":1080,"15-20":1055,"20-25":1025,"25-30":1000,"30-35":970,"35-40":930,"40+":885},
+  "中壢區": {"0-5":1080,"5-10":1065,"10-15":1045,"15-20":1020,"20-25":995,"25-30":965,"30-35":940,"35-40":900,"40+":855},
+  "八德區": {"0-5":1045,"5-10":1030,"10-15":1010,"15-20":985,"20-25":960,"25-30":935,"30-35":905,"35-40":870,"40+":830},
+  "大園區": {"0-5":1045,"5-10":1030,"10-15":1010,"15-20":985,"20-25":960,"25-30":935,"30-35":905,"35-40":870,"40+":830},
+  "平鎮區": {"0-5":900,"5-10":885,"10-15":870,"15-20":850,"20-25":830,"25-30":805,"30-35":780,"35-40":750,"40+":715},
+  "觀音區": {"0-5":900,"5-10":885,"10-15":870,"15-20":850,"20-25":830,"25-30":805,"30-35":780,"35-40":750,"40+":715},
+  "楊梅區": {"0-5":830,"5-10":815,"10-15":805,"15-20":780,"20-25":760,"25-30":740,"30-35":720,"35-40":690,"40+":660},
+  "龍潭區": {"0-5":830,"5-10":815,"10-15":805,"15-20":780,"20-25":760,"25-30":740,"30-35":720,"35-40":690,"40+":660},
+  "大溪區": {"0-5":710,"5-10":700,"10-15":685,"15-20":670,"20-25":650,"25-30":635,"30-35":615,"35-40":590,"40+":565},
+  "新屋區": {"0-5":625,"5-10":615,"10-15":605,"15-20":590,"20-25":575,"25-30":560,"30-35":545,"35-40":520,"40+":495},
+  "復興區": {"0-5":385,"5-10":380,"10-15":375,"15-20":365,"20-25":355,"25-30":345,"30-35":335,"35-40":320,"40+":305}
+};
+
+const LOCATION_RATE = {"中下區位":0,"中上區位":0.03,"優質區位":0.05};
+const DECORATE_RATE  = {"無裝修":0,"簡易裝修":0.03,"中等裝修":0.05};
+const BONUS_SET = ["冷氣","冰箱","洗衣機"];
+const BONUS_AMOUNT_HOUSE = 2000;
+const BONUS_AMOUNT_SUITE = 1000;
+
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const radioVal = n => document.querySelector(`input[name="${n}"]:checked`)?.value || null;
+
+const M2_PER_PING = 3.305785;
+
+function toNum(v, def=0){
+  const n = Number(v);
+  return Number.isFinite(n) ? n : def;
+}
+function clampPosInt(n, fallback){
+  n = Math.floor(toNum(n, fallback));
+  if(!Number.isFinite(n) || n <= 0) return fallback;
+  return n;
+}
+function calcShareM2(m2, num, den){
+  const a = Math.max(0, toNum(m2, 0));
+  const n = clampPosInt(num, 1);
+  const d = clampPosInt(den, 1);
+  return a * (n / d);
+}
+
+function calcAgeBand(rocYear, month){
+  const y = Number(rocYear), m = Number(month);
+  if(!Number.isFinite(y) || !Number.isFinite(m) || m<1 || m>12) return null;
+  const d = new Date(y + 1911, m - 1, 1);
+  const years = (Date.now() - d.getTime()) / 31557600000;
+  if(years < 5)  return "0-5";
+  if(years < 10) return "5-10";
+  if(years < 15) return "10-15";
+  if(years < 20) return "15-20";
+  if(years < 25) return "20-25";
+  if(years < 30) return "25-30";
+  if(years < 35) return "30-35";
+  if(years < 40) return "35-40";
+  return "40+";
+}
+
+function validate(){
+  const addrOk = $("#roadAddr").value.trim().length > 0;
+  const districtOk = $("#district").value.trim().length > 0;
+
+  const area = Number($("#areaDeed").value);
+  const areaOk = Number.isFinite(area) && area > 0;
+
+  const band = calcAgeBand($("#buildYear").value, $("#buildMonth").value);
+  const ymOk = !!band;
+
+  const layoutOk = !!radioVal("layout");
+  const typeOk = !!radioVal("houseType");
+
+  const rent = Number($("#expectedRent").value);
+  const rentOk = Number.isFinite(rent) && rent > 0;
+
+  const locOk = !!radioVal("locLevel");
+  const decoOk = !!radioVal("renoLevel");
+
+  return addrOk && districtOk && areaOk && ymOk && layoutOk && typeOk && rentOk && locOk && decoOk;
+}
+
+function syncBtn(){
+  $("#rentCheckBtn").disabled = !validate();
+  if($("#rentCheckBtn").disabled){
+    $("#result").className = "";
+    $("#result").textContent = "";
+  }
+}
+
+function wireEquipExclusiveNone(){
+  const group = $("#equipGroup");
+  if(!group) return;
+  group.addEventListener("change", (e) => {
+    const t = e.target;
+    if(!(t instanceof HTMLInputElement)) return;
+    if(t.name !== "equip") return;
+
+    const none = group.querySelector('input[name="equip"][value="無"]');
+    const others = Array.from(group.querySelectorAll('input[name="equip"]:not([value="無"])'));
+
+    if(t.value === "無" && t.checked){
+      others.forEach(x => x.checked = false);
+    }else if(t.value !== "無" && t.checked){
+      if(none) none.checked = false;
+    }
+  });
+}
+
+/* ===== 權狀坪數 Modal ===== */
+let bcItems = [];
+let dItems = []; // ✅ 車位(D)清單，可新增多筆
+function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
+
+function renderDList(){
+  const wrap = $("#dListWrap");
+  if(!wrap) return;
+
+  if(dItems.length === 0){
+    wrap.innerHTML = `
+      <div style="padding:12px 10px;border:1px solid #eef2f7;border-top:none;background:#fff;color:#6b7280;font-weight:800;">
+        尚未新增車位(D)
+      </div>`;
+    return;
+  }
+
+  const head = `
+    <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr .6fr;gap:0;border:1px solid #eef2f7;border-top:none;background:#f9fafb;font-weight:900;">
+      <div style="padding:10px;text-align:center;border-right:1px solid #eef2f7;">車位類型</div>
+      <div style="padding:10px;text-align:center;border-right:1px solid #eef2f7;">面積(m²)</div>
+      <div style="padding:10px;text-align:center;border-right:1px solid #eef2f7;">共有權利範圍</div>
+      <div style="padding:10px;text-align:center;border-right:1px solid #eef2f7;">共有權利面積(m²)</div>
+      <div style="padding:10px;text-align:center;">功能</div>
+    </div>
+  `;
+
+  const rows = dItems.map(item => {
+    const frac = item.isCustom ? `${item.num}/${item.den}` : "1";
+    return `
+      <div style="display:grid;grid-template-columns: 1.2fr 1fr 1fr 1fr .6fr; gap:0; border-left:1px solid #eef2f7;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;">
+        <div style="padding:10px;background:#fff;font-weight:900;text-align:center;border-right:1px solid #eef2f7;">${item.type}</div>
+        <div style="padding:10px;background:#fff;text-align:center;border-right:1px solid #eef2f7;">${item.m2.toFixed(2)}</div>
+        <div style="padding:10px;background:#fff;text-align:center;border-right:1px solid #eef2f7;">${item.type === "無車位(D)" ? "—" : frac}</div>
+        <div style="padding:10px;background:#fff;text-align:center;border-right:1px solid #eef2f7;">${item.shareM2.toFixed(2)}</div>
+        <div style="padding:10px;background:#fff;text-align:center;">
+          <button class="chipbtn del" type="button" data-d-del="${item.id}">刪除</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  wrap.innerHTML = `<div>${head}${rows}</div>`;
+
+  wrap.querySelectorAll("[data-d-del]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-d-del");
+      dItems = dItems.filter(x => x.id !== id);
+      renderDList();
+      updateAreaSummary();
+    });
+  });
+}
+
+function renderBCList(){
+  const wrap = $("#bcListWrap");
+  if(!wrap) return;
+
+  if(bcItems.length === 0){
+    wrap.innerHTML = `<div style="padding:12px 10px;border:1px solid #eef2f7;border-top:none;background:#fff;color:#6b7280;font-weight:800;">
+      尚未新增 B / C
+    </div>`;
+    return;
+  }
+
+  const head = `
+    <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr .6fr;gap:0;border:1px solid #eef2f7;border-top:none;background:#f9fafb;font-weight:900;">
+      <div style="padding:10px;text-align:center;border-right:1px solid #eef2f7;">類別</div>
+      <div style="padding:10px;text-align:center;border-right:1px solid #eef2f7;">面積(m²)</div>
+      <div style="padding:10px;text-align:center;border-right:1px solid #eef2f7;">共有權利範圍</div>
+      <div style="padding:10px;text-align:center;border-right:1px solid #eef2f7;">共有權利面積(m²)</div>
+      <div style="padding:10px;text-align:center;">功能</div>
+    </div>
+  `;
+
+  const rows = bcItems.map(item => {
+    const kindLabel = item.kind === "B" ? "附屬部分(B)" : "共有部分(C)";
+    const frac = `${item.num}/${item.den}`;
+    return `
+      <div style="display:grid;grid-template-columns: 1.2fr 1fr 1fr 1fr .6fr; gap:0; border-left:1px solid #eef2f7;border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;">
+        <div style="padding:10px;background:#fff;font-weight:900;text-align:center;border-right:1px solid #eef2f7;">${kindLabel}</div>
+        <div style="padding:10px;background:#fff;text-align:center;border-right:1px solid #eef2f7;">${item.m2.toFixed(2)}</div>
+        <div style="padding:10px;background:#fff;text-align:center;border-right:1px solid #eef2f7;">${frac}</div>
+        <div style="padding:10px;background:#fff;text-align:center;border-right:1px solid #eef2f7;">${item.shareM2.toFixed(2)}</div>
+        <div style="padding:10px;background:#fff;text-align:center;">
+          <button class="chipbtn del" type="button" data-del="${item.id}">刪除</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  wrap.innerHTML = `<div>${head}${rows}</div>`;
+
+  wrap.querySelectorAll("[data-del]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-del");
+      bcItems = bcItems.filter(x => x.id !== id);
+      renderBCList();
+      updateAreaSummary();
+    });
+  });
+}
+
+function addDItem(){
+  const type = $("#D_type").value;
+  const m2 = Math.max(0, toNum($("#D_m2").value, NaN));
+
+  if(type === "無車位(D)"){
+    alert("無車位(D) 不需要新增。若確定無車位，直接保持清單空白即可。");
+    return;
+  }
+
+  if(!Number.isFinite(m2) || m2 <= 0){
+    alert("請輸入車位面積(m²)。");
+    return;
+  }
+
+  const isCustom = (type === "自訂車位(D)");
+  let num = 1, den = 1;
+  let shareM2 = m2;
+
+  if(isCustom){
+    num = clampPosInt($("#D_num").value, 1);
+    den = clampPosInt($("#D_den").value, 1);
+    shareM2 = calcShareM2(m2, num, den);
+  }else{
+    // ✅ 其他車位：共有權利範圍默認 1（1/1）
+    shareM2 = m2;
+  }
+
+  dItems.push({ id: uid(), type, m2, isCustom, num, den, shareM2 });
+
+  // 清空輸入（保留 type）
+  $("#D_m2").value = 0;
+  $("#D_num").value = "";
+  $("#D_den").value = "";
+  syncDRangeUI();
+
+  renderDList();
+  updateAreaSummary();
+}
+
+
+function updateBCPreview(){
+  const kind = $("#BC_kind").value;
+  const m2 = toNum($("#BC_m2").value, 0);
+  const num = toNum($("#BC_num").value, 1) || 1;
+  const den = toNum($("#BC_den").value, 1) || 1;
+  const share = kind ? calcShareM2(m2, num, den) : 0;
+  $("#BC_share_m2_preview").textContent = share.toFixed(2);
+}
+
+/* ✅ 車位(D) UI：無車位=—；其他車位=1；自訂=分子/分母 */
+function syncDRangeUI(){
+  const type = $("#D_type").value;
+  const isNone = (type === "無車位(D)");
+  const isCustom = (type === "自訂車位(D)");
+  const isOther = (!isNone && !isCustom);
+
+  $("#D_rangeDash").style.display = isNone ? "inline" : "none";
+  $("#D_rangeOne").style.display  = isOther ? "inline-block" : "none";
+  $("#D_rangeInputs").style.display = isCustom ? "flex" : "none";
+  $("#D_rangeHint").style.display = isCustom ? "block" : "none";
+
+  if(!isCustom){
+    $("#D_num").value = "";
+    $("#D_den").value = "";
+  }
+}
+
+function updateAreaSummary(){
+  const A = Math.max(0, toNum($("#A_m2").value, 0));
+  $("#A_share_m2").textContent = A.toFixed(2);
+
+  // ✅ D 不再用單一輸入，改用清單加總
+  const D_share = dItems.reduce((s,x)=> s + (Number.isFinite(x.shareM2) ? x.shareM2 : 0), 0);
+  $("#D_share_m2").textContent = D_share.toFixed(2);
+
+  const sumB = bcItems.filter(x => x.kind === "B").reduce((s,x)=>s+x.shareM2,0);
+  const sumC = bcItems.filter(x => x.kind === "C").reduce((s,x)=>s+x.shareM2,0);
+
+  const totalM2 = (A + sumB + sumC - D_share);
+  const safeM2 = Number.isFinite(totalM2) ? totalM2 : 0;
+  const ping = safeM2 / M2_PER_PING;
+
+  $("#sumM2").textContent = safeM2.toFixed(2);
+  $("#sumPing").textContent = ping.toFixed(2);
+}
+
+function openAreaModal(){
+  document.body.style.overflow = "hidden";
+
+  const bd = $("#areaModalBackdrop");
+  bd.style.display = "flex";
+  bd.setAttribute("aria-hidden","false");
+  renderDList();
+  renderBCList();
+  updateBCPreview();
+  syncDRangeUI();
+  updateAreaSummary();
+  setTimeout(() => $("#A_m2")?.focus(), 50);
+}
+function closeAreaModal(){
+  document.body.style.overflow = "";
+
+  const bd = $("#areaModalBackdrop");
+  bd.style.display = "none";
+  bd.setAttribute("aria-hidden","true");
+}
+function wireAreaModal(){
+  $("#openAreaModalBtn").addEventListener("click", openAreaModal);
+  $("#cancelAreaModalBtn").addEventListener("click", closeAreaModal);
+  $("#closeAreaModalX").addEventListener("click", closeAreaModal);
+
+  $("#areaModalBackdrop").addEventListener("click", (e) => {
+    if(e.target === $("#areaModalBackdrop")) closeAreaModal();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape" && $("#areaModalBackdrop").style.display === "flex"){
+      closeAreaModal();
+    }
+  });
+
+  ["A_m2","D_m2","D_num","D_den","D_type","BC_kind","BC_m2","BC_num","BC_den"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener("input", () => { updateBCPreview(); updateAreaSummary(); });
+    el.addEventListener("change", () => { updateBCPreview(); updateAreaSummary(); });
+  });
+
+  $("#D_type").addEventListener("change", () => {
+    syncDRangeUI();
+    updateAreaSummary();
+  });
+
+  $("#addBCBtn").addEventListener("click", () => {
+    const kind = $("#BC_kind").value;
+    if(kind !== "B" && kind !== "C"){
+      alert("請先選擇新增類別（附屬部分(B) 或 共有部分(C)）。");
+      return;
+    }
+    const m2 = Math.max(0, toNum($("#BC_m2").value, NaN));
+    if(!Number.isFinite(m2) || m2 <= 0){
+      alert("請輸入面積(m²)。");
+      return;
+    }
+    const num = clampPosInt($("#BC_num").value, 1);
+    const den = clampPosInt($("#BC_den").value, 1);
+    const shareM2 = calcShareM2(m2, num, den);
+
+    bcItems.push({ id: uid(), kind, m2, num, den, shareM2 });
+
+    $("#BC_kind").value = "";
+    $("#BC_m2").value = "";
+    $("#BC_num").value = "";
+    $("#BC_den").value = "";
+    $("#BC_share_m2_preview").textContent = "0.00";
+
+    renderBCList();
+    updateAreaSummary();
+  });
+
+  $("#confirmAreaModalBtn").addEventListener("click", () => {
+    const ping = toNum($("#sumPing").textContent, 0);
+    if(!Number.isFinite(ping) || ping <= 0){
+      alert("權狀坪數計算結果需大於 0，請檢查 A/B/C/D 面積是否輸入正確。");
+      return;
+    }
+    $("#areaDeed").value = ping.toFixed(2);
+    closeAreaModal();
+    syncBtn();
+  });
+
+  $("#addDBtn").addEventListener("click", addDItem);
+}
+
+/* ===== 租金檢核 ===== */
+$("#rentCheckBtn").addEventListener("click", () => {
+  const district = $("#district").value.trim();
+  const band = calcAgeBand($("#buildYear").value, $("#buildMonth").value);
+
+  const layout = radioVal("layout");
+  const isSuite = (layout === "套房");
+
+  const table = isSuite ? RENT_TABLE_SUITE : RENT_TABLE_HOUSE;
+  const unit = table?.[district]?.[band];
+
+  if(!unit){
+    $("#result").className = "result fail";
+    $("#result").textContent = `查無 Pref（單坪租金）資料：${district} / ${band} / ${isSuite ? "套房(表九)" : "整層(表八)"}`;
+    return;
+  }
+
+  const area = Number($("#areaDeed").value);
+
+  const locName  = radioVal("locLevel");
+  const decoName = radioVal("renoLevel");
+  const dL = LOCATION_RATE[locName] ?? 0;
+  const dD = DECORATE_RATE[decoName] ?? 0;
+
+  const equips = $$("input[name='equip']:checked").map(x => x.value);
+  const hasNone = equips.includes("無");
+  const hasFullSet = !hasNone && BONUS_SET.every(x => equips.includes(x));
+
+  const equipCap = isSuite ? BONUS_AMOUNT_SUITE : BONUS_AMOUNT_HOUSE;
+  const deltaE = hasFullSet ? equipCap : 0;
+
+  const rMax = unit * (1 + dL + dD) * area + deltaE;
+
+  const ask = Number($("#expectedRent").value);
+  const pass = ask <= rMax;
+
+  const mgmt = Number($("#mgmtFeeAmt").value || 0);
+  const park = Number($("#parkingAmt").value || 0);
+
+  const fullAddress = `桃園市${district}${$("#roadAddr").value.trim()}`;
+
+  $("#result").className = "result " + (pass ? "pass" : "fail");
+  $("#result").textContent =
+    `${pass ? "✅ 檢核通過" : "❌ 檢核不通過"}\n\n` +
+    `地址：${fullAddress}\n` +
+    `案件類型：${isSuite ? "套房（表九）" : "整層/戶（表八）"}\n` +
+    `Pref（單坪租金）：${unit}\n` +
+    `Aarea（權狀坪數）：${area}\n` +
+    `δL（區位調整率）：${(dL*100).toFixed(0)}%（${locName}）\n` +
+    `δD（裝修調整率）：${(dD*100).toFixed(0)}%（${decoName}）\n` +
+    `ΔE（設備調整值）：${deltaE}（${hasFullSet ? "三項齊全(冷氣/冰箱/洗衣機)" : "未達三項或勾選無"}；上限 ${equipCap}）\n\n` +
+    `Rmax（核定上限）：${rMax.toFixed(2)}\n` +
+    `請求純租金：${ask}\n\n` +
+    `（附：管理費 ${mgmt}、車位費 ${park} — 不納入比對）`;
+});
+
+document.addEventListener("input", syncBtn);
+document.addEventListener("change", syncBtn);
+
+wireEquipExclusiveNone();
+wireAreaModal();
+renderBCList();
+renderDList();
+syncBtn();
+</script>
+
+</body>
+</html>
