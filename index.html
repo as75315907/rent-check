@@ -210,10 +210,10 @@
           <option>復興區</option>
         </select>
 
-        <input id="roadAddr"
+        <!-- <input id="roadAddr"
                autocomplete="street-address"
                inputmode="text"
-               placeholder="路名 / 段 / 巷 / 弄 / 號 / 樓（例：員林路二段282巷12號十四樓）">
+               placeholder="路名 / 段 / 巷 / 弄 / 號 / 樓（例：員林路二段282巷12號十四樓）"> -->
 
         <div class="small">系統會自動組合為「桃園市 + 行政區 + 路名門牌號」。</div>
       </div>
@@ -307,13 +307,14 @@
       <div>
         <label>設備（可不選；只影響 ΔE）</label>
         <div class="check" id="equipGroup">
+          <label><input type="checkbox" name="equip" value="電視"> 電視</label>
           <label><input type="checkbox" name="equip" value="冷氣"> 冷氣</label>
           <label><input type="checkbox" name="equip" value="冰箱"> 冰箱</label>
           <label><input type="checkbox" name="equip" value="洗衣機"> 洗衣機</label>
           <label><input type="checkbox" name="equip" value="無"> 無</label>
         </div>
         <div class="small">
-          ΔE 加成規則：冷氣+冰箱+洗衣機「三樣齊全」才加；套房 +1,000、整層/戶 +2,000。勾「無」表示無設備加成。
+          ΔE 加成規則：電視+冷氣+冰箱+洗衣機「四樣齊全」才加；套房 +1,000、整層/戶 +2,000。勾「無」表示無設備加成。
         </div>
       </div>
     </div>
@@ -520,7 +521,7 @@ function calcAgeBand(rocYear, month){
 }
 
 function validate(){
-  const addrOk = $("#roadAddr").value.trim().length > 0;
+  const addrOk = $("#district").value.trim().length > 0;
   const districtOk = $("#district").value.trim().length > 0;
 
   const area = Number($("#areaDeed").value);
@@ -871,10 +872,17 @@ $("#rentCheckBtn").addEventListener("click", () => {
 
   const equips = $$("input[name='equip']:checked").map(x => x.value);
   const hasNone = equips.includes("無");
-  const hasFullSet = !hasNone && BONUS_SET.every(x => equips.includes(x));
 
-  const equipCap = isSuite ? BONUS_AMOUNT_SUITE : BONUS_AMOUNT_HOUSE;
-  const deltaE = hasFullSet ? equipCap : 0;
+  // 四樣是否齊全（且不能選無）
+  const hasAllEquip =
+    !hasNone && BONUS_ITEMS.every(item => equips.includes(item));
+
+  // 依案件類型給 ΔE
+  let deltaE = 0;
+  if (hasAllEquip) {
+    deltaE = isSuite ? BONUS_AMOUNT_SUITE : BONUS_AMOUNT_HOUSE;
+  }
+
 
   const rMax = unit * (1 + dL + dD) * area + deltaE;
 
@@ -895,7 +903,7 @@ $("#rentCheckBtn").addEventListener("click", () => {
     `Aarea（權狀坪數）：${area}\n` +
     `δL（區位調整率）：${(dL*100).toFixed(0)}%（${locName}）\n` +
     `δD（裝修調整率）：${(dD*100).toFixed(0)}%（${decoName}）\n` +
-    `ΔE（設備調整值）：${deltaE}（${hasFullSet ? "三項齊全(冷氣/冰箱/洗衣機)" : "未達三項或勾選無"}；上限 ${equipCap}）\n\n` +
+    `ΔE（設備調整值）：${deltaE}（${hasFullSet ? "四項齊全(電視/冷氣/冰箱/洗衣機)" : "未達四項或勾選無"}；上限 ${equipCap}）\n\n` +
     `Rmax（核定上限）：${rMax.toFixed(2)}\n` +
     `請求純租金：${ask}\n\n` +
     `（附：管理費 ${mgmt}、車位費 ${park} — 不納入比對）`;
