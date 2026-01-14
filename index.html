@@ -183,7 +183,7 @@
     依公式：<span class="kbd">Rmax = Pref × (1 + δL + δD) × Aarea + ΔE</span><br>
     比對：<b>只用純租金</b>（房東預期租金）與 <b>Rmax</b> 比對；管理費/車位費僅作紀錄不納入比對。<br>
     Pref 取值：<b>套房</b>→表九（獨立套房單價表），<b>非套房</b>→表八（整層/戶單價表）。<br>
-    設備加成 ΔE：冷氣+冰箱+洗衣機「三樣齊全」才加；套房 +1,000、整層/戶 +2,000。設備不影響是否可檢核。
+    設備加成 ΔE：電視+冷氣+冰箱+洗衣機「四樣齊全」才加；套房 +1,000、整層/戶 +2,000。設備不影響是否可檢核。
   </p>
 
   <div class="card">
@@ -204,14 +204,7 @@
           <option>新屋區</option><option>龍潭區</option><option>大溪區</option>
           <option>復興區</option>
         </select>
-
-        <input id="roadAddr"
-               autocomplete="street-address"
-               inputmode="text"
-               placeholder="路名 / 段 / 巷 / 弄 / 號 / 樓（例：員林路二段282巷12號十四樓）">
-
-        <div class="small">系統會自動組合為「桃園市 + 行政區 + 路名門牌號」。</div>
-      </div>
+</div>
 
       <div>
         <label>權狀坪數 Aarea <span class="req">*</span></label>
@@ -302,6 +295,7 @@
       <div>
         <label>設備（可不選；只影響 ΔE）</label>
         <div class="check" id="equipGroup">
+          <label><input type="checkbox" name="equip" value="電視"> 電視</label>
           <label><input type="checkbox" name="equip" value="冷氣"> 冷氣</label>
           <label><input type="checkbox" name="equip" value="冰箱"> 冰箱</label>
           <label><input type="checkbox" name="equip" value="洗衣機"> 洗衣機</label>
@@ -472,12 +466,9 @@ const RENT_TABLE_SUITE = {
 
 const LOCATION_RATE = {"中下區位":0,"中上區位":0.03,"優質區位":0.05};
 const DECORATE_RATE  = {"無裝修":0,"簡易裝修":0.03,"中等裝修":0.05};
-const BONUS_SET = ["冷氣","冰箱","洗衣機"]; // legacy
+const BONUS_SET = ["電視","冷氣","冰箱","洗衣機"];
 const BONUS_AMOUNT_HOUSE = 2000;
 const BONUS_AMOUNT_SUITE = 1000;
-
-// ✅ 設備加成判斷用（四項齊全才加成）
-const BONUS_ITEMS = ["電視","冷氣","冰箱","洗衣機"];
 
 const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
@@ -518,7 +509,7 @@ function calcAgeBand(rocYear, month){
 }
 
 function validate(){
-  const addrOk = true; // 已改為只檢查行政區
+  const addrOk = true; // 地址已改為固定桃園市 + 行政區
   const districtOk = $("#district").value.trim().length > 0;
 
   const area = Number($("#areaDeed").value);
@@ -865,10 +856,10 @@ $("#rentCheckBtn").addEventListener("click", () => {
 
   const equips = $$("input[name='equip']:checked").map(x => x.value);
   const hasNone = equips.includes("無");
-  const hasAllEquip = !hasNone && BONUS_ITEMS.every(x => equips.includes(x));
+  const hasFullSet = !hasNone && BONUS_SET.every(x => equips.includes(x));
 
   const equipCap = isSuite ? BONUS_AMOUNT_SUITE : BONUS_AMOUNT_HOUSE;
-  const deltaE = hasAllEquip ? equipCap : 0;
+  const deltaE = hasFullSet ? equipCap : 0;
 
   const rMax = unit * (1 + dL + dD) * area + deltaE;
 
@@ -889,9 +880,7 @@ $("#rentCheckBtn").addEventListener("click", () => {
     `Aarea（權狀坪數）：${area}\n` +
     `δL（區位調整率）：${(dL*100).toFixed(0)}%（${locName}）\n` +
     `δD（裝修調整率）：${(dD*100).toFixed(0)}%（${decoName}）\n` +
-    `ΔE（設備調整值）：${deltaE}（${hasAllEquip ? "四項齊全(電視/冷氣/冰箱/洗衣機)" : "未達四項或勾選無"}；上限 ${equipCap}）
-
-` +
+    `ΔE（設備調整值）：${deltaE}（${hasFullSet ? "四項齊全(電視/冷氣/冰箱/洗衣機)" : "未達三項或勾選無"}；上限 ${equipCap}）\n\n` +
     `Rmax（核定上限）：${rMax.toFixed(2)}\n` +
     `請求純租金：${ask}\n\n` +
     `（附：管理費 ${mgmt}、車位費 ${park} — 不納入比對）`;
