@@ -868,6 +868,35 @@ function wireAreaModal(){
   $("#addDBtn").addEventListener("click", addDItem);
 }
 
+// ===== 手機 UX：點擊空白處收起鍵盤 =====
+function enableTapToDismissKeyboard(){
+  const isEditableEl = (el) => {
+    if(!el) return false;
+    const tag = (el.tagName || "").toLowerCase();
+    if(tag === "input" || tag === "textarea" || tag === "select") return true;
+    return el.isContentEditable === true;
+  };
+
+  const handler = (e) => {
+    const active = document.activeElement;
+    if(!isEditableEl(active)) return;
+
+    const target = e.target;
+    if(isEditableEl(target)) return;
+
+    // 點在 label（radio/checkbox文字）不要強制 blur，避免誤觸
+    const ttag = (target?.tagName || "").toLowerCase();
+    if(ttag === "label") return;
+
+    active.blur();
+  };
+
+  document.addEventListener("touchstart", handler, {capture:true, passive:true});
+  document.addEventListener("mousedown", handler, {capture:true});
+}
+enableTapToDismissKeyboard();
+
+
 /* ===== 租金檢核 ===== */
 $("#rentCheckBtn").addEventListener("click", () => {
   const district = $("#district").value.trim();
