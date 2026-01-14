@@ -78,7 +78,7 @@
       position:fixed; inset:0;
       background:rgba(0,0,0,.45);
       display:none;
-      align-items:flex-start;
+      align-items:center;
       justify-content:center;
       padding:14px;
       z-index: 1000;
@@ -89,10 +89,7 @@
       border-radius:14px;
       box-shadow: 0 20px 60px rgba(0,0,0,.25);
       overflow:hidden;
-    
-  max-height:90vh;
-  display:flex;
-  flex-direction:column;}
+    }
     .modal-hd{
       padding:16px 18px;
       border-bottom:1px solid #eef2f7;
@@ -102,9 +99,7 @@
       justify-content:space-between;
       gap:12px;
     }
-    .modal-bd{ padding:16px 18px; 
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;}
+    .modal-bd{ padding:16px 18px; }
     .modal-ft{
       padding:14px 18px;
       border-top:1px solid #eef2f7;
@@ -210,10 +205,10 @@
           <option>復興區</option>
         </select>
 
-        <!-- <input id="roadAddr"
+        <input id="roadAddr"
                autocomplete="street-address"
                inputmode="text"
-               placeholder="路名 / 段 / 巷 / 弄 / 號 / 樓（例：員林路二段282巷12號十四樓）"> -->
+               placeholder="路名 / 段 / 巷 / 弄 / 號 / 樓（例：員林路二段282巷12號十四樓）">
 
         <div class="small">系統會自動組合為「桃園市 + 行政區 + 路名門牌號」。</div>
       </div>
@@ -307,14 +302,13 @@
       <div>
         <label>設備（可不選；只影響 ΔE）</label>
         <div class="check" id="equipGroup">
-          <label><input type="checkbox" name="equip" value="電視"> 電視</label>
           <label><input type="checkbox" name="equip" value="冷氣"> 冷氣</label>
           <label><input type="checkbox" name="equip" value="冰箱"> 冰箱</label>
           <label><input type="checkbox" name="equip" value="洗衣機"> 洗衣機</label>
           <label><input type="checkbox" name="equip" value="無"> 無</label>
         </div>
         <div class="small">
-          ΔE 加成規則：電視+冷氣+冰箱+洗衣機「四樣齊全」才加；套房 +1,000、整層/戶 +2,000。勾「無」表示無設備加成。
+          ΔE 加成規則：冷氣+冰箱+洗衣機「三樣齊全」才加；套房 +1,000、整層/戶 +2,000。勾「無」表示無設備加成。
         </div>
       </div>
     </div>
@@ -478,9 +472,12 @@ const RENT_TABLE_SUITE = {
 
 const LOCATION_RATE = {"中下區位":0,"中上區位":0.03,"優質區位":0.05};
 const DECORATE_RATE  = {"無裝修":0,"簡易裝修":0.03,"中等裝修":0.05};
-const BONUS_SET = ["冷氣","冰箱","洗衣機"];
+const BONUS_SET = ["冷氣","冰箱","洗衣機"]; // legacy
 const BONUS_AMOUNT_HOUSE = 2000;
 const BONUS_AMOUNT_SUITE = 1000;
+
+// ✅ 設備加成判斷用（四項齊全才加成）
+const BONUS_ITEMS = ["電視","冷氣","冰箱","洗衣機"];
 
 const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
@@ -521,7 +518,7 @@ function calcAgeBand(rocYear, month){
 }
 
 function validate(){
-  const addrOk = $("#district").value.trim().length > 0;
+  const addrOk = true; // 已改為只檢查行政區
   const districtOk = $("#district").value.trim().length > 0;
 
   const area = Number($("#areaDeed").value);
@@ -759,8 +756,6 @@ function updateAreaSummary(){
 }
 
 function openAreaModal(){
-  document.body.style.overflow = "hidden";
-
   const bd = $("#areaModalBackdrop");
   bd.style.display = "flex";
   bd.setAttribute("aria-hidden","false");
@@ -772,8 +767,6 @@ function openAreaModal(){
   setTimeout(() => $("#A_m2")?.focus(), 50);
 }
 function closeAreaModal(){
-  document.body.style.overflow = "";
-
   const bd = $("#areaModalBackdrop");
   bd.style.display = "none";
   bd.setAttribute("aria-hidden","true");
@@ -872,17 +865,10 @@ $("#rentCheckBtn").addEventListener("click", () => {
 
   const equips = $$("input[name='equip']:checked").map(x => x.value);
   const hasNone = equips.includes("無");
+  const hasAllEquip = !hasNone && BONUS_ITEMS.every(x => equips.includes(x));
 
-  // 四樣是否齊全（且不能選無）
-  const hasAllEquip =
-    !hasNone && BONUS_ITEMS.every(item => equips.includes(item));
-
-  // 依案件類型給 ΔE
-  let deltaE = 0;
-  if (hasAllEquip) {
-    deltaE = isSuite ? BONUS_AMOUNT_SUITE : BONUS_AMOUNT_HOUSE;
-  }
-
+  const equipCap = isSuite ? BONUS_AMOUNT_SUITE : BONUS_AMOUNT_HOUSE;
+  const deltaE = hasAllEquip ? equipCap : 0;
 
   const rMax = unit * (1 + dL + dD) * area + deltaE;
 
@@ -892,7 +878,7 @@ $("#rentCheckBtn").addEventListener("click", () => {
   const mgmt = Number($("#mgmtFeeAmt").value || 0);
   const park = Number($("#parkingAmt").value || 0);
 
-  const fullAddress = `桃園市${district}${$("#roadAddr").value.trim()}`;
+  const fullAddress = `桃園市${district}`;
 
   $("#result").className = "result " + (pass ? "pass" : "fail");
   $("#result").textContent =
@@ -903,7 +889,9 @@ $("#rentCheckBtn").addEventListener("click", () => {
     `Aarea（權狀坪數）：${area}\n` +
     `δL（區位調整率）：${(dL*100).toFixed(0)}%（${locName}）\n` +
     `δD（裝修調整率）：${(dD*100).toFixed(0)}%（${decoName}）\n` +
-    `ΔE（設備調整值）：${deltaE}（${hasFullSet ? "四項齊全(電視/冷氣/冰箱/洗衣機)" : "未達四項或勾選無"}；上限 ${equipCap}）\n\n` +
+    `ΔE（設備調整值）：${deltaE}（${hasAllEquip ? "四項齊全(電視/冷氣/冰箱/洗衣機)" : "未達四項或勾選無"}；上限 ${equipCap}）
+
+` +
     `Rmax（核定上限）：${rMax.toFixed(2)}\n` +
     `請求純租金：${ask}\n\n` +
     `（附：管理費 ${mgmt}、車位費 ${park} — 不納入比對）`;
