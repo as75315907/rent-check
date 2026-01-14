@@ -78,18 +78,27 @@
       position:fixed; inset:0;
       background:rgba(0,0,0,.45);
       display:none;
-      align-items:flex-start;
       justify-content:center;
       padding:14px;
       z-index: 1000;
-    }
+      align-items:flex-start;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
+}
+
     .modal{
       width:min(980px, 100%);
       background:#fff;
       border-radius:14px;
       box-shadow: 0 20px 60px rgba(0,0,0,.25);
       overflow:hidden;
-    }
+      max-height:90vh;
+  display:flex;
+  flex-direction:column;
+}
+
     .modal-hd{
       padding:16px 18px;
       border-bottom:1px solid #eef2f7;
@@ -99,7 +108,11 @@
       justify-content:space-between;
       gap:12px;
     }
-    .modal-bd{ padding:16px 18px; }
+    .modal-bd{ padding:16px 18px;   overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+
     .modal-ft{
       padding:14px 18px;
       border-top:1px solid #eef2f7;
@@ -750,9 +763,30 @@ function updateAreaSummary(){
   $("#sumPing").textContent = ping.toFixed(2);
 }
 
+
+// ===== iOS/手機：Modal 開啟時鎖住背景捲動（用 position:fixed 避免 Safari overflow:hidden 失效） =====
+let __bodyScrollY = 0;
+function lockBodyScroll(){
+  __bodyScrollY = window.scrollY || 0;
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${__bodyScrollY}px`;
+  document.body.style.left = "0";
+  document.body.style.right = "0";
+  document.body.style.width = "100%";
+}
+function unlockBodyScroll(){
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+  document.body.style.right = "";
+  document.body.style.width = "";
+  window.scrollTo(0, __bodyScrollY || 0);
+}
+
 function openAreaModal(){
   const bd = $("#areaModalBackdrop");
   bd.style.display = "flex";
+  bd.scrollTop = 0;
   bd.setAttribute("aria-hidden","false");
   renderDList();
   renderBCList();
