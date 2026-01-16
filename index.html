@@ -199,7 +199,7 @@
     /* 基本資料：權狀坪數（input + 設定按鈕） */
     .area-row{
       display:grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr;
       gap:12px;
       align-items:center;
     }
@@ -209,6 +209,18 @@
       .addr-row{ grid-template-columns: 1fr; }
       .area-row{ grid-template-columns: 1fr; }
       #openAreaModalBtn{ width:100%; }
+    }
+
+    /* 三個金額欄位等寬 */
+    .grid-3-equal{
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 50px;
+    }
+
+    /* 關鍵：允許 input 縮小，不被 placeholder 撐爆 */
+    .grid-3-equal > div{
+      min-width: 0;
     }
   </style>
 </head>
@@ -231,9 +243,9 @@
         <label>地址 <span class="req">*</span></label>
         <div class="addr-row" style="margin-bottom:8px;"></div>
           <input id="cityFixed" value="桃園市" disabled
-                style="margin-bottom:8px; background:#f3f4f6; opacity:1;">
+                style="margin-bottom:8px; background:#f3f4f6; opacity:1; width: 200px;">
 
-          <select id="district" style="margin-bottom:8px;">
+          <select id="district" style="margin-bottom:8px;width: 220px;text-align:center;">
             <option value="">請選擇行政區</option>
             <option>龜山區</option><option>桃園區</option><option>中壢區</option>
             <option>蘆竹區</option><option>八德區</option><option>大園區</option>
@@ -247,8 +259,8 @@
       <div>
         <label>權狀坪數 Aarea <span class="req">*</span></label>
         <div class="area-row">
-          <input id="areaDeed" type="number" step="0.01" inputmode="decimal" placeholder="請按右側設定" readonly style="background:#f9fafb; opacity:1;">
-          <button id="openAreaModalBtn" class="btn ghost" type="button">設定</button>
+          <input id="areaDeed" type="number" step="0.01" inputmode="decimal" placeholder="請按設定" readonly style="background:#f9fafb; opacity:1;width: 200px;text-align:center;">
+          <button id="openAreaModalBtn" class="btn ghost" type="button" style="width: 220px;">設定</button>
         </div>
         <div class="small">點「設定」以 (A)+(B)+(C)-(D) 計算權狀坪數（坪）。</div>
       </div>
@@ -293,7 +305,7 @@
 
     <div class="divider"></div>
 
-    <div class="grid">
+    <div class="grid-3-equal">
       <div>
         <label>管理費（不納入比對）</label>
         <input id="mgmtFeeAmt" type="number" value="0" min="0" inputmode="numeric">
