@@ -229,23 +229,24 @@
     <div class="grid">
       <div>
         <label>地址 <span class="req">*</span></label>
+        <div class="addr-row" style="margin-bottom:8px;"></div>
+          <input id="cityFixed" value="桃園市" disabled
+                style="margin-bottom:8px; background:#f3f4f6; opacity:1;">
 
-        <input id="cityFixed" value="桃園市" disabled
-               style="margin-bottom:8px; background:#f3f4f6; opacity:1;">
-
-        <select id="district" style="margin-bottom:8px;">
-          <option value="">請選擇行政區</option>
-          <option>龜山區</option><option>桃園區</option><option>中壢區</option>
-          <option>蘆竹區</option><option>八德區</option><option>大園區</option>
-          <option>平鎮區</option><option>觀音區</option><option>楊梅區</option>
-          <option>新屋區</option><option>龍潭區</option><option>大溪區</option>
-          <option>復興區</option>
-        </select>
-</div>
+          <select id="district" style="margin-bottom:8px;">
+            <option value="">請選擇行政區</option>
+            <option>龜山區</option><option>桃園區</option><option>中壢區</option>
+            <option>蘆竹區</option><option>八德區</option><option>大園區</option>
+            <option>平鎮區</option><option>觀音區</option><option>楊梅區</option>
+            <option>新屋區</option><option>龍潭區</option><option>大溪區</option>
+            <option>復興區</option>
+          </select>
+        </div>
+    </div>
 
       <div>
         <label>權狀坪數 Aarea <span class="req">*</span></label>
-        <div class="row" style="align-items:stretch;">
+        <div class="area-row">
           <input id="areaDeed" type="number" step="0.01" inputmode="decimal" placeholder="請按右側設定" readonly style="background:#f9fafb; opacity:1;">
           <button id="openAreaModalBtn" class="btn ghost" type="button">設定</button>
         </div>
