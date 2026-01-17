@@ -78,27 +78,18 @@
       position:fixed; inset:0;
       background:rgba(0,0,0,.45);
       display:none;
+      align-items:center;
       justify-content:center;
       padding:14px;
       z-index: 1000;
-      align-items:flex-start;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-  padding-bottom: calc(14px + env(safe-area-inset-bottom));
-}
-
+    }
     .modal{
       width:min(980px, 100%);
       background:#fff;
       border-radius:14px;
       box-shadow: 0 20px 60px rgba(0,0,0,.25);
       overflow:hidden;
-      max-height:90vh;
-  display:flex;
-  flex-direction:column;
-}
-
+    }
     .modal-hd{
       padding:16px 18px;
       border-bottom:1px solid #eef2f7;
@@ -108,11 +99,7 @@
       justify-content:space-between;
       gap:12px;
     }
-    .modal-bd{ padding:16px 18px;   overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-}
-
+    .modal-bd{ padding:16px 18px; }
     .modal-ft{
       padding:14px 18px;
       border-top:1px solid #eef2f7;
@@ -187,42 +174,48 @@
       .sumline{ flex-direction:column; align-items:flex-start; }
     }
 
-    /* 基本資料：地址（桃園市 + 行政區） */
-    .addr-row{
-      display:grid;
-      grid-template-columns: 120px 1fr;
-      gap:12px;
+
+    /* ===== PDF Upload / Preview ===== */
+    .pdf-layout{ display:grid; grid-template-columns: 360px 1fr; gap:14px; align-items:start; }
+    @media (max-width: 900px){ .pdf-layout{ grid-template-columns: 1fr; } }
+
+    .pdf-drop{
+      border:2px dashed #cbd5e1;
+      border-radius:14px;
+      padding:16px;
+      background:#f8fafc;
+      cursor:pointer;
+      user-select:none;
+    }
+    .pdf-drop.dragover{ border-color: var(--primary); box-shadow: 0 0 0 4px rgba(37,99,235,.12); }
+    .pdf-drop-title{ font-weight:900; font-size:15px; margin-bottom:4px; }
+    .pdf-drop-sub{ color: var(--muted); font-size:12px; margin-bottom:12px; }
+    .pdf-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+    .pdf-nav{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+    .pdf-view{
+      position:relative;
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      background:#fff;
+      min-height: 320px;
+      padding:10px;
+      overflow:auto;
+    }
+    .pdf-view canvas{ width:100%; height:auto; display:block; margin:0 auto; }
+    .pdf-empty{
+      position:absolute;
+      inset:0;
+      display:flex;
       align-items:center;
-    }
-    #cityFixed{ text-align:center; }
-
-    /* 基本資料：權狀坪數（input + 設定按鈕） */
-    .area-row{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:12px;
-      align-items:center;
+      justify-content:center;
+      color: var(--muted);
+      font-weight:800;
+      pointer-events:none;
     }
 
-    /* 手機：兩欄改直排，按鈕滿版更好按 */
-    @media (max-width: 900px){
-      .addr-row{ grid-template-columns: 1fr; }
-      .area-row{ grid-template-columns: 1fr; }
-      #openAreaModalBtn{ width:100%; }
-    }
-
-    /* 三個金額欄位等寬 */
-    .grid-3-equal{
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 50px;
-    }
-
-    /* 關鍵：允許 input 縮小，不被 placeholder 撐爆 */
-    .grid-3-equal > div{
-      min-width: 0;
-    }
   </style>
+<script src="./pdf.min.js"></script>
 </head>
 <body>
 
@@ -232,8 +225,47 @@
     依公式：<span class="kbd">Rmax = Pref × (1 + δL + δD) × Aarea + ΔE</span><br>
     比對：<b>只用純租金</b>（房東預期租金）與 <b>Rmax</b> 比對；管理費/車位費僅作紀錄不納入比對。<br>
     Pref 取值：<b>套房</b>→表九（獨立套房單價表），<b>非套房</b>→表八（整層/戶單價表）。<br>
-    設備加成 ΔE：電視+冷氣+冰箱+洗衣機「四樣齊全」才加；套房 +1,000、整層/戶 +2,000。設備不影響是否可檢核。
+    設備加成 ΔE：冷氣+冰箱+洗衣機「三樣齊全」才加；套房 +1,000、整層/戶 +2,000。設備不影響是否可檢核。
   </p>
+
+  <div class="card" id="pdfCard">
+    <h3 style="margin:0 0 12px;">PDF 上傳/預覽</h3>
+
+    <div class="pdf-layout">
+      <div>
+        <div id="pdfDropzone" class="pdf-drop" role="button" tabindex="0" aria-label="拖曳 PDF 到這裡或點擊選檔">
+          <div class="pdf-drop-title">拖曳 PDF 到這裡</div>
+          <div class="pdf-drop-sub">或點擊此區塊選擇檔案（僅支援 PDF）</div>
+
+          <div class="pdf-actions">
+            <button id="pdfBrowseBtn" class="btn ghost" type="button">瀏覽</button>
+            <button id="pdfClearBtn" class="btn danger" type="button" disabled>清空</button>
+          </div>
+
+          <div class="pdf-nav">
+            <button id="pdfPrevBtn" class="btn ghost" type="button" disabled>上一頁</button>
+            <button id="pdfNextBtn" class="btn ghost" type="button" disabled>下一頁</button>
+            <span id="pdfPageInfo" class="muted">第 0 / 0 頁</span>
+          </div>
+
+          <div id="pdfFileName" class="muted" style="margin-top:8px;">尚未選擇檔案</div>
+        </div>
+
+        <input id="pdfInput" type="file" accept="application/pdf" style="display:none;" />
+      </div>
+
+      <div class="pdf-view" id="pdfViewer">
+        <canvas id="pdfCanvas"></canvas>
+        <div id="pdfEmpty" class="pdf-empty">尚未載入 PDF（預覽第一頁）</div>
+      </div>
+    </div>
+
+    <div id="pdfExtractStatus" class="small" style="margin-top:10px; white-space:pre-line;"></div>
+    <div class="small" style="margin-top:10px;">
+      提醒：本頁僅在瀏覽器端預覽檔案，不會上傳到伺服器。
+    </div>
+  </div>
+
 
   <div class="card">
     <h3 style="margin:0 0 12px;">基本資料（<span class="req">*</span>必填）</h3>
@@ -241,26 +273,25 @@
     <div class="grid">
       <div>
         <label>地址 <span class="req">*</span></label>
-        <div class="addr-row" style="margin-bottom:8px;"></div>
-          <input id="cityFixed" value="桃園市" disabled
-                style="margin-bottom:8px; background:#f3f4f6; opacity:1; width: 200px;">
 
-          <select id="district" style="margin-bottom:8px;width: 220px;text-align:center;">
-            <option value="">請選擇行政區</option>
-            <option>龜山區</option><option>桃園區</option><option>中壢區</option>
-            <option>蘆竹區</option><option>八德區</option><option>大園區</option>
-            <option>平鎮區</option><option>觀音區</option><option>楊梅區</option>
-            <option>新屋區</option><option>龍潭區</option><option>大溪區</option>
-            <option>復興區</option>
-          </select>
-        </div>
-    </div>
+        <input id="cityFixed" value="桃園市" disabled
+               style="margin-bottom:8px; background:#f3f4f6; opacity:1;">
+
+        <select id="district" style="margin-bottom:8px;">
+          <option value="">請選擇行政區</option>
+          <option>龜山區</option><option>桃園區</option><option>中壢區</option>
+          <option>蘆竹區</option><option>八德區</option><option>大園區</option>
+          <option>平鎮區</option><option>觀音區</option><option>楊梅區</option>
+          <option>新屋區</option><option>龍潭區</option><option>大溪區</option>
+          <option>復興區</option>
+        </select>
+      </div>
 
       <div>
         <label>權狀坪數 Aarea <span class="req">*</span></label>
-        <div class="area-row">
-          <input id="areaDeed" type="number" step="0.01" inputmode="decimal" placeholder="請按設定" readonly style="background:#f9fafb; opacity:1;width: 200px;text-align:center;">
-          <button id="openAreaModalBtn" class="btn ghost" type="button" style="width: 220px;">設定</button>
+        <div class="row" style="align-items:stretch;">
+          <input id="areaDeed" type="number" step="0.01" inputmode="decimal" placeholder="請按右側設定" readonly style="background:#f9fafb; opacity:1;">
+          <button id="openAreaModalBtn" class="btn ghost" type="button">設定</button>
         </div>
         <div class="small">點「設定」以 (A)+(B)+(C)-(D) 計算權狀坪數（坪）。</div>
       </div>
@@ -305,7 +336,7 @@
 
     <div class="divider"></div>
 
-    <div class="grid-3-equal">
+    <div class="grid">
       <div>
         <label>管理費（不納入比對）</label>
         <input id="mgmtFeeAmt" type="number" value="0" min="0" inputmode="numeric">
@@ -344,7 +375,7 @@
       </div>
 
       <div>
-        <label>設備（可不選；只影響 ΔE）<span class="req">*</span></label>
+        <label>設備（可不選；只影響 ΔE）</label>
         <div class="check" id="equipGroup">
           <label><input type="checkbox" name="equip" value="電視"> 電視</label>
           <label><input type="checkbox" name="equip" value="冷氣"> 冷氣</label>
@@ -409,7 +440,7 @@
                 <option value="自訂車位(D)">自訂車位(D)</option>
               </select>
             </td>
-            <td><input id="D_m2" class="mini" type="number" step="0.01" inputmode="decimal" placeholder="0" value=""></td>
+            <td><input id="D_m2" class="mini" type="number" step="0.01" inputmode="decimal" value="0"></td>
 
             <!-- ✅ 共有權利範圍：無車位=—；其他車位=1；自訂=分子/分母 -->
             <td style="text-align:center;">
@@ -481,7 +512,6 @@
     </div>
   </div>
 </div>
-
 <script>
 const RENT_TABLE_HOUSE = {
   "龜山區": {"0-5":855,"5-10":840,"10-15":825,"15-20":805,"20-25":785,"25-30":760,"30-35":740,"35-40":710,"40+":675},
@@ -560,7 +590,7 @@ function calcAgeBand(rocYear, month){
 }
 
 function validate(){
-  const addrOk = true; // 地址已改為固定桃園市 + 行政區
+  const addrOk = true; // 已移除路名門牌輸入，只檢查行政區
   const districtOk = $("#district").value.trim().length > 0;
 
   const area = Number($("#areaDeed").value);
@@ -578,10 +608,7 @@ function validate(){
   const locOk = !!radioVal("locLevel");
   const decoOk = !!radioVal("renoLevel");
 
-  // ✅ 設備欄位也列入：至少勾選一項（或選「無」）
-  const equipOk = $$('input[name="equip"]:checked').length > 0;
-
-  return addrOk && districtOk && areaOk && ymOk && layoutOk && typeOk && rentOk && locOk && decoOk && equipOk ;
+  return addrOk && districtOk && areaOk && ymOk && layoutOk && typeOk && rentOk && locOk && decoOk;
 }
 
 function syncBtn(){
@@ -800,30 +827,9 @@ function updateAreaSummary(){
   $("#sumPing").textContent = ping.toFixed(2);
 }
 
-
-// ===== iOS/手機：Modal 開啟時鎖住背景捲動（用 position:fixed 避免 Safari overflow:hidden 失效） =====
-let __bodyScrollY = 0;
-function lockBodyScroll(){
-  __bodyScrollY = window.scrollY || 0;
-  document.body.style.position = "fixed";
-  document.body.style.top = `-${__bodyScrollY}px`;
-  document.body.style.left = "0";
-  document.body.style.right = "0";
-  document.body.style.width = "100%";
-}
-function unlockBodyScroll(){
-  document.body.style.position = "";
-  document.body.style.top = "";
-  document.body.style.left = "";
-  document.body.style.right = "";
-  document.body.style.width = "";
-  window.scrollTo(0, __bodyScrollY || 0);
-}
-
 function openAreaModal(){
   const bd = $("#areaModalBackdrop");
   bd.style.display = "flex";
-  bd.scrollTop = 0;
   bd.setAttribute("aria-hidden","false");
   renderDList();
   renderBCList();
@@ -905,35 +911,6 @@ function wireAreaModal(){
   $("#addDBtn").addEventListener("click", addDItem);
 }
 
-// ===== 手機 UX：點擊空白處收起鍵盤 =====
-function enableTapToDismissKeyboard(){
-  const isEditableEl = (el) => {
-    if(!el) return false;
-    const tag = (el.tagName || "").toLowerCase();
-    if(tag === "input" || tag === "textarea" || tag === "select") return true;
-    return el.isContentEditable === true;
-  };
-
-  const handler = (e) => {
-    const active = document.activeElement;
-    if(!isEditableEl(active)) return;
-
-    const target = e.target;
-    if(isEditableEl(target)) return;
-
-    // 點在 label（radio/checkbox文字）不要強制 blur，避免誤觸
-    const ttag = (target?.tagName || "").toLowerCase();
-    if(ttag === "label") return;
-
-    active.blur();
-  };
-
-  document.addEventListener("touchstart", handler, {capture:true, passive:true});
-  document.addEventListener("mousedown", handler, {capture:true});
-}
-enableTapToDismissKeyboard();
-
-
 /* ===== 租金檢核 ===== */
 $("#rentCheckBtn").addEventListener("click", () => {
   const district = $("#district").value.trim();
@@ -998,6 +975,601 @@ wireAreaModal();
 renderBCList();
 renderDList();
 syncBtn();
+
+
+/* ===== PDF 上傳/拖曳/預覽（pdf.js） ===== */
+(function(){
+  const dropzone  = document.getElementById('pdfDropzone');
+  const input     = document.getElementById('pdfInput');
+  const browseBtn = document.getElementById('pdfBrowseBtn');
+  const clearBtn  = document.getElementById('pdfClearBtn');
+  const prevBtn   = document.getElementById('pdfPrevBtn');
+  const nextBtn   = document.getElementById('pdfNextBtn');
+  const pageInfo  = document.getElementById('pdfPageInfo');
+  const fileNameEl= document.getElementById('pdfFileName');
+  const emptyEl  = document.getElementById('pdfEmpty');
+  const canvas    = document.getElementById('pdfCanvas');
+  const viewer    = document.getElementById('pdfViewer');
+  const statusEl  = document.getElementById('pdfExtractStatus');
+  const ctx       = canvas ? canvas.getContext('2d') : null;
+
+  if(!dropzone || !input || !browseBtn || !clearBtn || !prevBtn || !nextBtn || !pageInfo || !fileNameEl || !emptyEl || !canvas || !ctx){
+    return;
+  }
+
+  let pdfDoc = null;
+  let pageNum = 1;
+  let totalPages = 0;
+  let rendering = false;
+  let pendingPage = null;
+
+  // 若某些環境擋 CDN（或首次載入失敗），這裡提供備援載入
+  const PDFJS_CDNS = [
+    {
+      lib: './pdf.min.js',
+      worker: './pdf.worker.min.js'
+    },
+    ];
+
+  function loadScript(src){
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('Script load failed: ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function ensurePdfJs(){
+    if(window.pdfjsLib) return PDFJS_CDNS[0];
+    try{
+      await loadScript(PDFJS_CDNS[0].lib);
+      if(window.pdfjsLib) return PDFJS_CDNS[0];
+    }catch(_){ }
+    return null;
+  }
+
+  function setControls(){
+    const loaded = !!pdfDoc;
+    prevBtn.disabled = !loaded || pageNum <= 1;
+    nextBtn.disabled = !loaded || pageNum >= totalPages;
+    clearBtn.disabled = !loaded;
+    pageInfo.textContent = loaded ? `第 ${pageNum} / ${totalPages} 頁` : '第 0 / 0 頁';
+    if(emptyEl){
+      emptyEl.style.display = loaded ? 'none' : 'flex';
+    }
+  }
+
+  function setFileName(name){
+    fileNameEl.textContent = name ? `已載入：${name}` : '尚未選擇檔案';
+  }
+
+  function fitScale(viewport){
+    const containerWidth = (viewer && viewer.clientWidth) ? viewer.clientWidth : canvas.clientWidth;
+    const padding = 0;
+    const targetW = Math.max(320, containerWidth - padding);
+    return targetW / viewport.width;
+  }
+
+  function setStatus(msg){
+    if(!statusEl) return;
+    statusEl.textContent = msg || '';
+  }
+
+  async function getPdfText(doc, maxPages=8){
+    const pages = Math.min(doc.numPages || 1, maxPages);
+    const out = [];
+    for(let i=1;i<=pages;i++){
+      const page = await doc.getPage(i);
+      const tc = await page.getTextContent({ disableCombineTextItems: false });
+      const t = (tc.items || []).map(it => it.str).join(' ');
+      out.push(t);
+    }
+    return out.join('\n');
+  }
+
+  function toHalfWidth(str){
+    return String(str||'').replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+  }
+
+  function norm(s){
+    // 保留換行（方便分段解析），但統一空白/全形數字/逗號/星號
+    return toHalfWidth(String(s||''))
+      .replace(/\u3000/g,' ')
+      .replace(/[，,]/g,'')
+      .replace(/[＊*]/g,'')
+      .replace(/\r\n/g,'\n')
+      .replace(/\r/g,'\n')
+      .replace(/[ \t\f\v]+/g,' ')
+      .replace(/\n[ \t]+/g,'\n')
+      .trim();
+  }
+
+  function num(s){
+    // 允許像 "*****50.57" 或 "**1,566.22" 這種遮罩
+    const t = toHalfWidth(String(s||''))
+      .replace(/[，,]/g,'')
+      .replace(/[＊*]/g,'')
+      .replace(/[^0-9.\-]/g,'')
+      .trim();
+    const n = Number(t);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function toRocYear(y){
+    const yr = parseInt(String(y),10);
+    if(!Number.isFinite(yr)) return null;
+    return (yr >= 1912) ? (yr - 1911) : yr;
+  }
+
+  function parseBuildYM(text){
+    const t = text;
+    const patterns = [
+      /建\s*築\s*完\s*成(?:\s*日\s*期|\s*年\s*月\s*日)?\s*[:：]?\s*(?:民\s*國\s*)?(\d{2,4})\s*(?:[\/\-.年])\s*(\d{1,2})\s*(?:[\/\-.月])\s*(\d{1,2})/i,
+      /建\s*築\s*完\s*成(?:\s*日\s*期|\s*年\s*月\s*日)?\s*[:：]?\s*(?:民\s*國\s*)?(\d{3})(\d{2})(\d{2})/i,
+      /完\s*工(?:\s*日\s*期|\s*年\s*月\s*日)?\s*[:：]?\s*(?:民\s*國\s*)?(\d{2,4})\s*(?:[\/\-.年])\s*(\d{1,2})/i,
+      /建\s*築\s*完\s*成(?:\s*年\s*月)?\s*[:：]?\s*(?:民\s*國\s*)?(\d{2,4})\s*(?:[\/\-.年])\s*(\d{1,2})/i,
+    ];
+    for(const re of patterns){
+      const m = re.exec(t);
+      if(!m) continue;
+      const roc = toRocYear(m[1]);
+      const month = parseInt(m[2],10);
+      if(!roc || !month) continue;
+      if(month < 1 || month > 12) continue;
+      return { rocYear: roc, month };
+    }
+    return null;
+  }
+
+  function parseDistrict(text){
+    const districts = ["龜山區","桃園區","中壢區","蘆竹區","八德區","大園區","平鎮區","觀音區","楊梅區","新屋區","龍潭區","大溪區","復興區"];
+
+    // 1) 直接命中（常見："桃園市中壢地政事務所"、"中壢區石頭段"）
+    for(const d of districts){
+      if(text.includes(d)) return d;
+    }
+
+    // 2) 兜底：抓「XX區」字樣
+    const m = /([一-龥]{1,3}區)/.exec(text);
+    if(m && districts.includes(m[1])) return m[1];
+
+    return null;
+  }
+
+  function findAll(re, text){
+    const res = [];
+    let m;
+    while((m = re.exec(text)) !== null){
+      res.push(m);
+    }
+    return res;
+  }
+
+  function parseAreas(text){
+    const t = text;
+
+    const getOne = (res) => {
+      for(const re of res){
+        const m = re.exec(t);
+        if(m){
+          const v = num(m[1]);
+          if(Number.isFinite(v)) return v;
+        }
+      }
+      return null;
+    };
+
+    // ✅ 主/總面積：容許遮罩星號（*****50.57）與各種欄位名
+    const main = getOne([
+      /(?:總\s*面\s*積|層\s*次\s*面\s*積|主\s*建\s*物\s*面\s*積|專\s*有\s*部\s*分\s*面\s*積)\s*[:：]?\s*[*＊]*\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(?:平\s*方\s*公\s*尺|m²|m2)/i,
+    ]);
+
+    // ✅ 附屬建物面積：第一類謄本常見是「附屬建物用途：… 面積：***3.97平方公尺 雨遮 ***1.02平方公尺」
+    let accessory = 0;
+
+    // 1) 先抓「附屬建物用途」區段（到第一個共有部分為止）
+    const accBlockMatch = /附\s*屬\s*建\s*物\s*用\s*途\s*[:：]?([\s\S]*?)(?=共\s*有\s*部\s*分\s*[:：]?)/i.exec(t);
+    if(accBlockMatch){
+      const block = accBlockMatch[1];
+      for(const m of findAll(/[*＊]*\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(?:平\s*方\s*公\s*尺|m²|m2)/ig, block)){
+        const v = num(m[1]);
+        if(Number.isFinite(v)) accessory += v;
+      }
+    }
+
+    // 2) 備援：有些版本會出現「附屬建物面積：xx平方公尺」
+    if(accessory == 0){
+      for(const m of findAll(/附\s*屬(?:\s*建\s*物)?\s*面\s*積\s*[:：]?\s*[*＊]*\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(?:平\s*方\s*公\s*尺|m²|m2)/ig, t)){
+        const v = num(m[1]);
+        if(Number.isFinite(v)) accessory += v;
+      }
+    }
+
+    // ✅ 共有部分：第一類謄本常見「共有部分：…****808.04平方公尺」「權利範圍：*****10000分之104*****」
+    const commonItems = [];
+
+    // 1) 若謄本有「共有權利面積」就直接採用（已是持分後）
+    const shareMatches = findAll(/共\s*有\s*權\s*利\s*面\s*積\s*[:：]?\s*[*＊]*\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(?:平\s*方\s*公\s*尺|m²|m2)/ig, t);
+    if(shareMatches.length){
+      for(const m of shareMatches){
+        const v = num(m[1]);
+        if(Number.isFinite(v)) commonItems.push({ m2: v, num: 1, den: 1, shareM2: v, mode: 'share' });
+      }
+    }else{
+      // 2) 常見：共有部分 + 權利範圍（分之 或 /）
+      const commonRatioRe = /共\s*有\s*部\s*分\s*[:：]?[\s\S]{0,120}?[*＊]*\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(?:平\s*方\s*公\s*尺|m²|m2)[\s\S]{0,200}?權\s*利\s*範\s*圍\s*[:：]?[\s\S]{0,60}?[*＊]*\s*([0-9]{1,8})\s*(分\s*之|\/)\s*([0-9]{1,8})/ig;
+      for(const m of findAll(commonRatioRe, t)){
+        const m2 = num(m[1]);
+        const left = parseInt(m[2],10) || 1;
+        const sep = (m[3] || '').replace(/\s+/g,'');
+        const right = parseInt(m[4],10) || 1;
+
+        let nume = 1, deno = 1;
+        if(sep == '分之'){
+          // 10000分之104 代表 104/10000
+          deno = left; nume = right;
+        }else{
+          // 104/10000
+          nume = left; deno = right;
+        }
+
+        if(Number.isFinite(m2) && deno > 0){
+          const share = m2 * (nume/deno);
+          commonItems.push({ m2: m2, num: nume, den: deno, shareM2: share, mode: 'ratio' });
+        }
+      }
+
+      // 3) 最後兜底：只有「共有部分：xx平方公尺」沒有權利範圍
+      if(!commonItems.length){
+        const commonRe = /共\s*有\s*部\s*分\s*[:：]?[\s\S]{0,120}?[*＊]*\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(?:平\s*方\s*公\s*尺|m²|m2)/ig;
+        for(const m of findAll(commonRe, t)){
+          const v = num(m[1]);
+          if(Number.isFinite(v)) commonItems.push({ m2: v, num: 1, den: 1, shareM2: v, mode: 'plain' });
+        }
+      }
+    }
+
+    const parkingSpaces = [];
+
+    // ✅ 停車位：常見格式
+    // （含停車位編號33號 ,權利範圍：100000分之596）
+    const parkRe = /含\s*停\s*車\s*位\s*編\s*號\s*([0-9０-９]+)\s*號[\s\S]{0,80}?權\s*利\s*範\s*圍\s*[:：]?[\s\S]{0,60}?[*＊]*\s*([0-9]{1,8})\s*(分\s*之|\/)\s*([0-9]{1,8})/ig;
+    for(const m of findAll(parkRe, t)){
+      const no = toHalfWidth(m[1]).replace(/\D/g,'');
+      const left = parseInt(m[2],10) || 1;
+      const sep = (m[3] || '').replace(/\s+/g,'');
+      const right = parseInt(m[4],10) || 1;
+
+      let nume = 1, deno = 1;
+      if(sep === '分之'){
+        deno = left; nume = right;
+      }else{
+        nume = left; deno = right;
+      }
+      if(deno > 0) parkingSpaces.push({ no: no || null, num: nume, den: deno });
+    }
+
+    // ✅ 停車位總數（若有）
+    let parkingTotal = null;
+    const totalM = /合\s*計\s*([0-9０-９]+)\s*個\s*停\s*車\s*位/.exec(t);
+    if(totalM){
+      const v = parseInt(toHalfWidth(totalM[1]).replace(/\D/g,''), 10);
+      if(Number.isFinite(v)) parkingTotal = v;
+    }
+
+    const commonShareSum = commonItems.reduce((s,x)=>s+(Number.isFinite(x.shareM2)?x.shareM2:0),0);
+    return { main, accessory, commonItems, commonShareSum, parkingSpaces, parkingTotal };
+  }
+
+function uidLocal(){
+    return Math.random().toString(16).slice(2) + Date.now().toString(16);
+  }
+
+  async function extractAndFill(doc){
+    try{
+      setStatus('正在從第一類謄本自動帶入：建築完成年月、權狀坪數…');
+      const raw = await getPdfText(doc, 10);
+      const text = norm(raw);
+      if(!text || text.length < 40){
+        setStatus('⚠️ 這份 PDF 可能是掃描圖檔，無法擷取文字（pdf.js 取不到文字層）。\n\n建議：改用「可選取文字」的謄本 PDF，或先做 OCR 再上傳。');
+        return;
+      }
+
+      const ym = parseBuildYM(text);
+      const areas = parseAreas(text);
+
+      const dist = parseDistrict(text);
+
+      let msgs = [];
+
+      // 填建築完成年月
+      if(ym){
+        const yEl = document.getElementById('buildYear');
+        const mEl = document.getElementById('buildMonth');
+        if(yEl) yEl.value = String(ym.rocYear);
+        if(mEl) mEl.value = String(ym.month);
+        msgs.push(`✅ 建築完成年月：民國 ${ym.rocYear} 年 ${ym.month} 月`);
+      }else{
+        msgs.push('⚠️ 未在 PDF 文字中找到「建築完成日期/年月」關鍵字（可能格式不同）。');
+      }
+
+
+      // 填行政區（地址）
+      if(dist){
+        const dEl = document.getElementById('district');
+        if(dEl){
+          dEl.value = dist;
+          try{ dEl.dispatchEvent(new Event('change', { bubbles:true })); }catch(_){ }
+        }
+        msgs.push(`✅ 行政區：${dist}`);
+      }else{
+        msgs.push('⚠️ 未能從 PDF 文字中解析到行政區（可能格式不同）。');
+      }
+
+      // 填權狀坪數：主/總 + 附屬 + (共有權利面積加總)
+      const main = Number.isFinite(areas.main) ? areas.main : 0;
+      const acc = Number.isFinite(areas.accessory) ? areas.accessory : 0;
+      const com = Number.isFinite(areas.commonShareSum) ? areas.commonShareSum : 0;
+      const baseSumM2 = main + acc + com;
+
+      if(baseSumM2 > 0 && Number.isFinite(baseSumM2)){
+        // 同步填到「權狀坪數設定」的 A/B/C/D 結構，方便你再微調
+        const Ael = document.getElementById('A_m2');
+        if(Ael) Ael.value = main ? main.toFixed(2) : '';
+
+        // 清空既有項目
+        try{ bcItems.length = 0; dItems.length = 0; }catch(_){ }
+
+        // B：附屬建物
+        if(acc > 0){
+          bcItems.push({ id: uidLocal(), kind: 'B', m2: acc, num: 1, den: 1, shareM2: acc });
+        }
+
+        // C：共有部分
+        // 若能抓到持分（ratio），就帶入分子/分母；否則以 1/1
+        for(const it of areas.commonItems){
+          const m2 = Number.isFinite(it.m2) ? it.m2 : 0;
+          const nume = parseInt(it.num,10) || 1;
+          const deno = parseInt(it.den,10) || 1;
+          const share = Number.isFinite(it.shareM2) ? it.shareM2 : m2;
+          if(share > 0){
+            bcItems.push({ id: uidLocal(), kind: 'C', m2: m2, num: nume, den: deno, shareM2: share });
+          }
+        }
+
+        // D：停車位（若謄本有「含停車位編號…」）
+        const parkList = Array.isArray(areas.parkingSpaces) ? areas.parkingSpaces : [];
+        if(parkList.length){
+          // 以第一筆「共有部分(C)」的面積(m²)作為基底（該段落通常同時帶有總權利範圍與停車位權利範圍）
+          const baseCommon = areas.commonItems.find(x => x.mode === 'ratio') || areas.commonItems[0];
+          const baseM2 = baseCommon && Number.isFinite(baseCommon.m2) ? baseCommon.m2 : null;
+
+          if(baseM2){
+            for(const p of parkList){
+              const shareM2 = baseM2 * (p.num / p.den);
+              const labelNo = p.no ? `（${p.no}號）` : '';
+              dItems.push({
+                id: uidLocal(),
+                type: `自訂車位(D)${labelNo}`,
+                m2: baseM2,
+                num: p.num,
+                den: p.den,
+                isCustom: true,
+                shareM2
+              });
+              msgs.push(`✅ 停車位：${p.no ? p.no + '號' : '（未抓到編號）'}，權利範圍 ${p.num}/${p.den}（權利面積約 ${(shareM2/M2_PER_PING).toFixed(2)} 坪）`);
+            }
+            if(Number.isFinite(areas.parkingTotal) && areas.parkingTotal){
+              msgs.push(`   （本社區停車位總數：${areas.parkingTotal} 個）`);
+            }
+          }else{
+            msgs.push('⚠️ 解析到停車位權利範圍，但找不到可用的「共有部分面積(m²)」基底，故未自動帶入車位(D)。');
+          }
+        }
+
+        // 重新渲染 modal summary
+        try{ renderBCList(); renderDList(); updateAreaSummary(); }catch(_){ }
+
+        // 依公式：權狀坪數 = (A) + (B) + (C) - (D)
+        const bcShare = bcItems.reduce((s,x)=>s + (Number.isFinite(x.shareM2)?x.shareM2:0), 0);
+        const dShare  = dItems.reduce((s,x)=>s + (Number.isFinite(x.shareM2)?x.shareM2:0), 0);
+        const sumM2 = main + bcShare - dShare;
+        const ping = sumM2 / M2_PER_PING;
+
+        const areaDeedEl = document.getElementById('areaDeed');
+        if(areaDeedEl) areaDeedEl.value = (Number.isFinite(ping) ? ping.toFixed(2) : '');
+
+        msgs.push(`✅ 權狀坪數：${ping.toFixed(2)} 坪（= ${sumM2.toFixed(2)} m²）`);
+        msgs.push(`   來源：(A) ${main.toFixed(2)} + (B) ${acc.toFixed(2)} + (C) ${com.toFixed(2)} - (D) ${(dShare).toFixed(2)}（m²）`);
+      }else{
+        msgs.push('⚠️ 未能從 PDF 文字中解析到「總面積/主建物面積、附屬建物面積、共有部分面積」等欄位。');
+      }
+
+      try{ syncBtn(); }catch(_){ }
+
+      setStatus(msgs.join('\n'));
+    }catch(err){
+      console.error(err);
+      setStatus('⚠️ 解析 PDF 失敗：' + (err && err.message ? err.message : String(err)));
+    }
+  }
+
+
+  async function renderPage(num){
+    if(!pdfDoc) return;
+    rendering = true;
+    setControls();
+
+    const page = await pdfDoc.getPage(num);
+    const baseViewport = page.getViewport({ scale: 1 });
+    const scale = fitScale(baseViewport);
+    const viewport = page.getViewport({ scale });
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(viewport.width * dpr);
+    canvas.height = Math.floor(viewport.height * dpr);
+    canvas.style.width = `${Math.floor(viewport.width)}px`;
+    canvas.style.height = `${Math.floor(viewport.height)}px`;
+
+    const renderContext = {
+      canvasContext: ctx,
+      viewport: viewport,
+      transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null,
+    };
+
+    // 清畫布（避免殘影）
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    await page.render(renderContext).promise;
+
+    rendering = false;
+    if(pendingPage !== null){
+      const p = pendingPage;
+      pendingPage = null;
+      await renderPage(p);
+    }
+
+    setControls();
+  }
+
+  function queueRender(num){
+    if(rendering){
+      pendingPage = num;
+      return;
+    }
+    renderPage(num);
+  }
+
+  async function loadFile(file){
+    if(!file) return;
+    if(file.type !== 'application/pdf' && !file.name.toLowerCase().endswith('.pdf')){
+      alert('僅支援 PDF 檔案');
+      return;
+    }
+
+    const cdn = await ensurePdfJs();
+    if(!cdn || !window.pdfjsLib){
+      alert('PDF 引擎載入失敗（pdf.js 未載入）。\n\n可能原因：\n1) 網路/公司環境擋外部 CDN\n2) 你用離線環境開啟\n\n解法：把 pdf.min.js / pdf.worker.min.js 下載到同網域後改成本機路徑。');
+      return;
+    }
+
+    // 設定 worker（若未設定，pdf.js 可能會嘗試從同網域載入導致失敗）
+    try{
+      if(!window.pdfjsLib.GlobalWorkerOptions.workerSrc){
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.min.js';
+      }
+    }catch(_){
+      // ignore
+    }
+
+    const buf = await file.arrayBuffer();
+
+    // 重置狀態
+    pdfDoc = null;
+    pageNum = 1;
+    totalPages = 0;
+    rendering = false;
+    pendingPage = null;
+    setFileName(file.name);
+    pageInfo.textContent = '載入中...';
+    if(emptyEl) emptyEl.style.display = 'none';
+
+    try{
+      const task = window.pdfjsLib.getDocument({ data: buf });
+      pdfDoc = await task.promise;
+      totalPages = pdfDoc.numPages || 1;
+      pageNum = 1;
+      await renderPage(pageNum);
+
+      // 自動解析第一類謄本：建築完成年月、權狀坪數
+      extractAndFill(pdfDoc).catch(console.error);
+    }catch(err){
+      console.error(err);
+      alert('PDF 載入失敗，請確認檔案未損毀。');
+      clearPDF(true);
+      return;
+    }
+
+    setControls();
+  }
+
+  function clearPDF(silent=false){
+    pdfDoc = null;
+    pageNum = 1;
+    totalPages = 0;
+    rendering = false;
+    pendingPage = null;
+    input.value = '';
+    setFileName('');
+    setStatus('');
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    canvas.width = 1; canvas.height = 1;
+    pageInfo.textContent = silent ? '第 0 / 0 頁' : '已清空';
+    setControls();
+  }
+
+  // --- UI events ---
+  browseBtn.addEventListener('click', (e) => { e.stopPropagation(); input.click(); });
+  clearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearPDF(); });
+
+  input.addEventListener('change', () => {
+    const f = input.files && input.files[0];
+    if(f) loadFile(f);
+  });
+
+  // 點擊拖曳區也能選檔
+  dropzone.addEventListener('click', () => input.click());
+  dropzone.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      input.click();
+    }
+  });
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) loadFile(f);
+  });
+
+  prevBtn.addEventListener('click', () => {
+    if(!pdfDoc || pageNum <= 1) return;
+    pageNum -= 1;
+    queueRender(pageNum);
+    setControls();
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if(!pdfDoc || pageNum >= totalPages) return;
+    pageNum += 1;
+    queueRender(pageNum);
+    setControls();
+  });
+
+  // 視窗改變大小：重新 fit 畫面
+  let resizeT = 0;
+  window.addEventListener('resize', () => {
+    if(!pdfDoc) return;
+    clearTimeout(resizeT);
+    resizeT = setTimeout(() => queueRender(pageNum), 150);
+  });
+
+  // 初始狀態
+  clearBtn.disabled = true;
+  setControls();
+})();
+
 </script>
 
 </body>
