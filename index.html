@@ -18,6 +18,16 @@
       --bad-tx:#991b1b;
     }
     body{font-family:"Noto Sans TC",system-ui;background:var(--bg);margin:0;color:#111827}
+    body.modal-open{overflow:hidden; touch-action:none;}
+    body.modal-open .modal-bd{
+      padding:16px 18px;
+      /* ✅ 關鍵：內容區可捲動，header/footer 固定可見 */
+      flex:1 1 auto;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior:contain;
+}
+
     .wrap{max-width:1100px;margin:30px auto;padding:20px}
     h1{margin:0 0 8px}
     .hint{color:var(--muted);font-size:13px;margin:0 0 18px;line-height:1.6}
@@ -78,18 +88,27 @@
       position:fixed; inset:0;
       background:rgba(0,0,0,.45);
       display:none;
-      align-items:center;
       justify-content:center;
+      align-items:flex-start;
       padding:14px;
       z-index: 1000;
-    }
+      overflow-y:auto;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior:contain;
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
+}
     .modal{
       width:min(980px, 100%);
       background:#fff;
       border-radius:14px;
       box-shadow: 0 20px 60px rgba(0,0,0,.25);
       overflow:hidden;
-    }
+
+      /* ✅ 關鍵：把 modal 高度限制在視窗內，避免「確定」被擠到下面按不到 */
+      max-height: calc(100vh - 28px);
+      display:flex;
+      flex-direction:column;
+}
     .modal-hd{
       padding:16px 18px;
       border-bottom:1px solid #eef2f7;
@@ -107,7 +126,10 @@
       justify-content:flex-end;
       gap:10px;
       background:#fff;
-    }
+
+      /* iPhone 底部安全區 */
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
+}
     .banner-warn{
       background:#fde8e8;
       border:1px solid #fecaca;
@@ -215,7 +237,7 @@
     }
 
   </style>
-<script src="./pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
 
@@ -241,15 +263,15 @@
             <button id="pdfBrowseBtn" class="btn ghost" type="button">瀏覽</button>
             <button id="pdfClearBtn" class="btn danger" type="button" disabled>清空</button>
           </div>
+          <div id="pdfFileName" class="muted" style="margin-top:8px;">尚未選擇檔案</div>
+        </div>
 
-          <div class="pdf-nav">
+
+        <div class="pdf-nav">
             <button id="pdfPrevBtn" class="btn ghost" type="button" disabled>上一頁</button>
             <button id="pdfNextBtn" class="btn ghost" type="button" disabled>下一頁</button>
             <span id="pdfPageInfo" class="muted">第 0 / 0 頁</span>
           </div>
-
-          <div id="pdfFileName" class="muted" style="margin-top:8px;">尚未選擇檔案</div>
-        </div>
 
         <input id="pdfInput" type="file" accept="application/pdf" style="display:none;" />
       </div>
@@ -830,6 +852,7 @@ function updateAreaSummary(){
 function openAreaModal(){
   const bd = $("#areaModalBackdrop");
   bd.style.display = "flex";
+  document.body.classList.add("modal-open");
   bd.setAttribute("aria-hidden","false");
   renderDList();
   renderBCList();
@@ -841,6 +864,7 @@ function openAreaModal(){
 function closeAreaModal(){
   const bd = $("#areaModalBackdrop");
   bd.style.display = "none";
+  document.body.classList.remove("modal-open");
   bd.setAttribute("aria-hidden","true");
 }
 function wireAreaModal(){
@@ -1460,7 +1484,7 @@ function uidLocal(){
     // 設定 worker（若未設定，pdf.js 可能會嘗試從同網域載入導致失敗）
     try{
       if(!window.pdfjsLib.GlobalWorkerOptions.workerSrc){
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.min.js';
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
       }
     }catch(_){
       // ignore
@@ -1512,10 +1536,64 @@ function uidLocal(){
     pageInfo.textContent = silent ? '第 0 / 0 頁' : '已清空';
     setControls();
   }
+  function resetAll(){
+    // 1) 清空 PDF
+    clearPDF();
+
+    // 2) 清空所有表單輸入
+    // text/number/select
+    const setVal = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; };
+    setVal("district", "");
+    setVal("road", "");
+    setVal("areaDeed", "");
+    setVal("buildYear", "");
+    setVal("buildMonth", "");
+    setVal("mgmtFeeAmt", 0);
+    setVal("parkingAmt", 0);
+    setVal("expectedRent", "");
+
+    // radios
+    document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+
+    // equips checkboxes
+    document.querySelectorAll('input[type="checkbox"][name="equip"]').forEach(c => c.checked = false);
+
+    // modal inputs
+    ["A_m2","D_m2","D_num","D_den","BC_kind","BC_m2","BC_num","BC_den"].forEach(id => setVal(id, ""));
+    // 重置 D 類型為第一個選項
+    const dt = document.getElementById("D_type"); 
+    if(dt) dt.selectedIndex = 0;
+
+    // 3) 清空坪數計算清單
+    if(typeof bcItems !== "undefined") bcItems = [];
+    if(typeof dItems !== "undefined") dItems = [];
+
+    if(typeof renderBCList === "function") renderBCList();
+    if(typeof renderDList === "function") renderDList();
+    if(typeof updateAreaSummary === "function") updateAreaSummary();
+    if(typeof updateBCPreview === "function") updateBCPreview();
+    if(typeof syncDRangeUI === "function") syncDRangeUI();
+
+    // 4) 清空結果區
+    const res = document.getElementById("result");
+    if(res){ res.className = ""; res.textContent = ""; }
+
+    // 5) 關閉 Modal（若開著）
+    if(typeof closeAreaModal === "function") closeAreaModal();
+
+    // 6) 重新同步按鈕狀態
+    if(typeof syncBtn === "function") syncBtn();
+  }
+
 
   // --- UI events ---
   browseBtn.addEventListener('click', (e) => { e.stopPropagation(); input.click(); });
-  clearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearPDF(); });
+  // 清空：除了 PDF，也要把整個頁面的所有輸入一併重置
+  clearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (typeof resetAll === 'function') resetAll();
+    else clearPDF();
+  });
 
   input.addEventListener('change', () => {
     const f = input.files && input.files[0];
