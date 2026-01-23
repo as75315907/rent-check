@@ -462,7 +462,7 @@
                 <option value="自訂車位(D)">自訂車位(D)</option>
               </select>
             </td>
-            <td><input id="D_m2" class="mini" type="number" step="0.01" inputmode="decimal" value="0"></td>
+            <td><input id="D_m2" class="mini" type="number" step="0.01" inputmode="decimal" placeholder="0" value=""></td>
 
             <!-- ✅ 共有權利範圍：無車位=—；其他車位=1；自訂=分子/分母 -->
             <td style="text-align:center;">
@@ -1174,6 +1174,8 @@ syncBtn();
 
   function parseAreas(text){
     const t = text;
+    // ✅ 避免「共有部分」被括號內的停車位權利範圍干擾：先切掉「含停車位編號」後段
+    const tNoPark = t.split(/含\s*停\s*車\s*位\s*編\s*號/i)[0];
 
     const getOne = (res) => {
       for(const re of res){
@@ -1225,7 +1227,7 @@ syncBtn();
     }else{
       // 2) 常見：共有部分 + 權利範圍（分之 或 /）
       const commonRatioRe = /共\s*有\s*部\s*分\s*[:：]?[\s\S]{0,120}?[*＊]*\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(?:平\s*方\s*公\s*尺|m²|m2)[\s\S]{0,200}?權\s*利\s*範\s*圍\s*[:：]?[\s\S]{0,60}?[*＊]*\s*([0-9]{1,8})\s*(分\s*之|\/)\s*([0-9]{1,8})/ig;
-      for(const m of findAll(commonRatioRe, t)){
+      for(const m of findAll(commonRatioRe, tNoPark)){
         const m2 = num(m[1]);
         const left = parseInt(m[2],10) || 1;
         const sep = (m[3] || '').replace(/\s+/g,'');
@@ -1249,43 +1251,48 @@ syncBtn();
       // 3) 最後兜底：只有「共有部分：xx平方公尺」沒有權利範圍
       if(!commonItems.length){
         const commonRe = /共\s*有\s*部\s*分\s*[:：]?[\s\S]{0,120}?[*＊]*\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(?:平\s*方\s*公\s*尺|m²|m2)/ig;
-        for(const m of findAll(commonRe, t)){
+        for(const m of findAll(commonRe, tNoPark)){
           const v = num(m[1]);
           if(Number.isFinite(v)) commonItems.push({ m2: v, num: 1, den: 1, shareM2: v, mode: 'plain' });
         }
       }
-    }
-
-    const parkingSpaces = [];
-
-    // ✅ 停車位：常見格式
-    // （含停車位編號33號 ,權利範圍：100000分之596）
-    const parkRe = /含\s*停\s*車\s*位\s*編\s*號\s*([0-9０-９]+)\s*號[\s\S]{0,80}?權\s*利\s*範\s*圍\s*[:：]?[\s\S]{0,60}?[*＊]*\s*([0-9]{1,8})\s*(分\s*之|\/)\s*([0-9]{1,8})/ig;
-    for(const m of findAll(parkRe, t)){
-      const no = toHalfWidth(m[1]).replace(/\D/g,'');
-      const left = parseInt(m[2],10) || 1;
-      const sep = (m[3] || '').replace(/\s+/g,'');
-      const right = parseInt(m[4],10) || 1;
-
-      let nume = 1, deno = 1;
-      if(sep === '分之'){
-        deno = left; nume = right;
-      }else{
-        nume = left; deno = right;
+    }    const parkingSpaces = [];
+    for(const m of findAll(/停\s*車\s*位[\s\S]{0,80}?權\s*利\s*範\s*圍[\s\S]{0,40}?(\d+)\s*分\s*之\s*(\d+)/g, t)){
+      const den = parseInt(m[1],10), num = parseInt(m[2],10);
+      if(den>0 && num>0){
+        parkingSpaces.push({ den, num, raw: m[0].slice(0,120) });
       }
-      if(deno > 0) parkingSpaces.push({ no: no || null, num: nume, den: deno });
     }
 
-    // ✅ 停車位總數（若有）
-    let parkingTotal = null;
-    const totalM = /合\s*計\s*([0-9０-９]+)\s*個\s*停\s*車\s*位/.exec(t);
-    if(totalM){
-      const v = parseInt(toHalfWidth(totalM[1]).replace(/\D/g,''), 10);
-      if(Number.isFinite(v)) parkingTotal = v;
+    // ✅ 多筆停車位：把「分母/分子」全部加總成一筆（使用最小公倍數統一分母）
+    function gcd(a,b){ while(b){ const t=a%b; a=b; b=t; } return Math.abs(a||0); }
+    function lcm(a,b){ if(!a||!b) return 0; return Math.abs(a/gcd(a,b)*b); }
+
+    let parkingAggDen = 0;
+    let parkingAggNum = 0;
+
+    if(parkingSpaces.length){
+      parkingAggDen = parkingSpaces[0].den;
+      for(const p of parkingSpaces.slice(1)){
+        parkingAggDen = lcm(parkingAggDen, p.den) || parkingAggDen;
+      }
+      parkingAggNum = parkingSpaces.reduce((s,p)=> s + (p.num * (parkingAggDen / p.den)), 0);
     }
 
-    const commonShareSum = commonItems.reduce((s,x)=>s+(Number.isFinite(x.shareM2)?x.shareM2:0),0);
-    return { main, accessory, commonItems, commonShareSum, parkingSpaces, parkingTotal };
+    // ✅ 將停車位權利範圍換算成「共有權利面積(m²)」：用「共有部分」的總面積作為基礎
+    const commonBaseM2 =
+      (commonItems.find(x => x.mode === "ratio")?.m2) ??
+      (commonItems.find(x => x.mode === "plain")?.m2) ??
+      null;
+
+    let parkingTotal = 0;
+    if(commonBaseM2 && parkingAggDen>0 && parkingAggNum>0){
+      parkingTotal = commonBaseM2 * (parkingAggNum / parkingAggDen);
+    }
+
+    const commonShareSum = commonItems.reduce((s,it)=> s + (Number.isFinite(it.shareM2)?it.shareM2:0), 0);
+
+    return { main, accessory, commonItems, commonShareSum, parkingSpaces, parkingAggNum, parkingAggDen, parkingTotal, commonBaseM2 };
   }
 
 function uidLocal(){
@@ -1372,22 +1379,22 @@ function uidLocal(){
           const baseM2 = baseCommon && Number.isFinite(baseCommon.m2) ? baseCommon.m2 : null;
 
           if(baseM2){
-            for(const p of parkList){
-              const shareM2 = baseM2 * (p.num / p.den);
-              const labelNo = p.no ? `（${p.no}號）` : '';
+            // ✅ 需求 B：多筆車位權利範圍加總後，放進 D（只放一筆）
+            const aggNum = areas.parkingAggNum || 0;
+            const aggDen = areas.parkingAggDen || 0;
+            if(aggNum>0 && aggDen>0){
               dItems.push({
-                id: uidLocal(),
-                type: `自訂車位(D)${labelNo}`,
+                id: 'D_PARKING',
+                type: '自訂車位(D)',
                 m2: baseM2,
-                num: p.num,
-                den: p.den,
                 isCustom: true,
-                shareM2
+                num: aggNum,
+                den: aggDen,
+                shareM2: baseM2 * (aggNum/aggDen)
               });
-              msgs.push(`✅ 停車位：${p.no ? p.no + '號' : '（未抓到編號）'}，權利範圍 ${p.num}/${p.den}（權利面積約 ${(shareM2/M2_PER_PING).toFixed(2)} 坪）`);
-            }
-            if(Number.isFinite(areas.parkingTotal) && areas.parkingTotal){
-              msgs.push(`   （本社區停車位總數：${areas.parkingTotal} 個）`);
+              msgs.push(`✅ 已自動帶入停車位(D)權利範圍：${aggDen}分之${aggNum}`);
+            } else {
+              msgs.push('⚠️ 解析到停車位權利範圍，但無法形成有效的分子/分母加總。');
             }
           }else{
             msgs.push('⚠️ 解析到停車位權利範圍，但找不到可用的「共有部分面積(m²)」基底，故未自動帶入車位(D)。');
