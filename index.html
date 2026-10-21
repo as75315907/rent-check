@@ -996,16 +996,11 @@ $("#rentCheckBtn").addEventListener("click", () => {
   $("#result").textContent =
     `${pass ? "✅ 檢核通過" : "❌ 檢核不通過"}\n\n` +
     `地址：${fullAddress}\n` +
-    `案件類型：${isSuite ? "套房（表九）" : "整層/戶（表八）"}\n` +
-    `Pref（單坪租金）：${unit}\n` +
-    `Aarea（權狀坪數）：${area}\n` +
-    `δL（區位調整率）：${(dL*100).toFixed(0)}%（${locName}）\n` +
-    `δD（裝修調整率）：${(dD*100).toFixed(0)}%（${decoName}）\n` +
-    `ΔE（設備調整值）：${deltaE}（${equipRuleText}；上限 ${equipCap}）\n\n` +
+    `案件類型：${isSuite ? "套房" : "整層/戶"}\n\n` +
     `市府核定租金上限：${rMax.toLocaleString("zh-TW")} 元\n` +
     `本次請求純租金：${ask.toLocaleString("zh-TW")} 元\n` +
     `${differenceText}\n\n` +
-    `（附：管理費 ${mgmt}、車位費 ${park} — 不納入比對）`;
+    `管理費：${mgmt.toLocaleString("zh-TW")} 元｜車位費：${park.toLocaleString("zh-TW")} 元（不納入比對）`;
 });
 
 document.addEventListener("input", syncBtn);
