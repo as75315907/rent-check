@@ -985,6 +985,12 @@ $("#rentCheckBtn").addEventListener("click", () => {
   const park = Number($("#parkingAmt").value || 0);
 
   const fullAddress = `桃園市${district}`;
+  const rentDifference = ask - rMax;
+  const differenceText = rentDifference > 0
+    ? `超出核定上限：${rentDifference.toLocaleString("zh-TW")} 元`
+    : rentDifference < 0
+      ? `低於核定上限：${Math.abs(rentDifference).toLocaleString("zh-TW")} 元`
+      : "請求租金剛好等於核定上限";
 
   $("#result").className = "result " + (pass ? "pass" : "fail");
   $("#result").textContent =
@@ -996,10 +1002,9 @@ $("#rentCheckBtn").addEventListener("click", () => {
     `δL（區位調整率）：${(dL*100).toFixed(0)}%（${locName}）\n` +
     `δD（裝修調整率）：${(dD*100).toFixed(0)}%（${decoName}）\n` +
     `ΔE（設備調整值）：${deltaE}（${equipRuleText}；上限 ${equipCap}）\n\n` +
-    `公式計算值：${rawRMax.toFixed(2)}\n` +
-    `調整後租金（截除小數）：${adjustedRent}\n` +
-    `市府核定上限（進位至 ${roundingUnit} 元）：${rMax}\n` +
-    `請求純租金：${ask}\n\n` +
+    `市府核定租金上限：${rMax.toLocaleString("zh-TW")} 元\n` +
+    `本次請求純租金：${ask.toLocaleString("zh-TW")} 元\n` +
+    `${differenceText}\n\n` +
     `（附：管理費 ${mgmt}、車位費 ${park} — 不納入比對）`;
 });
 
