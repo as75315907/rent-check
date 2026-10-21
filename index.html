@@ -247,7 +247,7 @@
     依公式：<span class="kbd">Rmax = Pref × (1 + δL + δD) × Aarea + ΔE</span><br>
     比對：<b>只用純租金</b>（房東預期租金）與 <b>Rmax</b> 比對；管理費/車位費僅作紀錄不納入比對。<br>
     Pref 取值：<b>套房</b>→表九（獨立套房單價表），<b>非套房</b>→表八（整層/戶單價表）。<br>
-    設備加成 ΔE：套房選一樣 +500、選兩樣以上 +1,000（最高 +1,000）；整層/戶每選一樣 +500，最多四樣 +2,000。設備不影響是否可檢核。
+    設備加成 ΔE：套房選一樣 +500、選兩樣以上 +1,000（最高 +1,000）；整層/戶每選一樣 +500，最多四樣 +2,000。套房計算結果會先截除小數，再向上進位至 500 元級距。設備不影響是否可檢核。
   </p>
 
   <div class="card" id="pdfCard">
@@ -972,7 +972,10 @@ $("#rentCheckBtn").addEventListener("click", () => {
     ? `${selectedEquipCount} 項設備（每項 500 元，套房上限 1,000 元）`
     : `${selectedEquipCount} 項設備 × 500 元`;
 
-  const rMax = unit * (1 + dL + dD) * area + deltaE;
+  const rawRMax = unit * (1 + dL + dD) * area + deltaE;
+  // 桃園市府後台的套房邏輯：先截除小數，再向上進位至 500 元級距。
+  const adjustedRent = isSuite ? Math.floor(rawRMax) : rawRMax;
+  const rMax = isSuite ? Math.ceil(adjustedRent / 500) * 500 : rawRMax;
 
   const ask = Number($("#expectedRent").value);
   const pass = ask <= rMax;
@@ -992,7 +995,9 @@ $("#rentCheckBtn").addEventListener("click", () => {
     `δL（區位調整率）：${(dL*100).toFixed(0)}%（${locName}）\n` +
     `δD（裝修調整率）：${(dD*100).toFixed(0)}%（${decoName}）\n` +
     `ΔE（設備調整值）：${deltaE}（${equipRuleText}；上限 ${equipCap}）\n\n` +
-    `Rmax（核定上限）：${rMax.toFixed(2)}\n` +
+    (isSuite
+      ? `公式計算值：${rawRMax.toFixed(2)}\n調整後租金（截除小數）：${adjustedRent}\n市府核定上限（進位至 500 元）：${rMax}\n`
+      : `Rmax（核定上限）：${rMax.toFixed(2)}\n`) +
     `請求純租金：${ask}\n\n` +
     `（附：管理費 ${mgmt}、車位費 ${park} — 不納入比對）`;
 });
